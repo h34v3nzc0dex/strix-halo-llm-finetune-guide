@@ -1,0 +1,14 @@
+# Add to /etc/default/grub on the GRUB_CMDLINE_LINUX_DEFAULT line:
+#
+#   ttm.pages_limit=33554432  ttm.page_pool_size=33554432
+#   transparent_hugepage=always  numa_balancing=disable
+#
+# Full example for our box (kernel 6.19.14):
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash iommu=pt pcie_aspm.policy=performance amdgpu.runpm=0 ttm.pages_limit=33554432 ttm.page_pool_size=33554432 transparent_hugepage=always numa_balancing=disable"
+#
+# After editing: sudo update-grub && sudo reboot
+#
+# Verify post-reboot:
+#   cat /proc/cmdline                             # confirm params present
+#   cat /sys/kernel/mm/transparent_hugepage/enabled # should show [always]
+#   cat /sys/class/drm/card0/device/mem_info_vram_used  # readable, integer bytes

@@ -1,0 +1,9 @@
+#!/bin/bash
+# Strix Halo — defragment system memory before GPU-heavy operation.
+# Forces kernel page compactor + drops caches to give amdgpu's TTM allocator
+# contiguous free pages. Combined with vm.compaction_proactiveness=20 sysctl,
+# this prevents the order-0 page allocation failures we hit on Strix Halo
+# during sustained heavy GPU work (mid-training eval, model load).
+set -e
+echo 1 > /proc/sys/vm/compact_memory
+echo 3 > /proc/sys/vm/drop_caches

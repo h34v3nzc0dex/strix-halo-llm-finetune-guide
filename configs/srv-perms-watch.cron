@@ -1,0 +1,6 @@
+# defensive perm restore for /srv. Some apt postinst scripts
+# (most likely systemd / dpkg / snapd postinsts) silently chmod /srv to
+# 0750, which breaks every non-root process that needs to traverse to
+# /path/to/workspace/* (training, llama-server, dashboards, …). Cheap fix:
+# restore 0755 every minute. Idempotent.
+* * * * * root /bin/chmod 755 /srv 2>/dev/null

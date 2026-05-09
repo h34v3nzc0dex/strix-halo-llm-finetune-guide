@@ -1,0 +1,3 @@
+# Allow the training user to defrag system memory without password — used by training
+# script before each eval to prevent amdgpu TTM page allocation failures.
+<user> ALL=(root) NOPASSWD: /usr/local/bin/gpu-defrag-mem
