@@ -1,6 +1,6 @@
 # Add to /etc/default/grub on the GRUB_CMDLINE_LINUX_DEFAULT line:
 #
-#   ttm.pages_limit=33554432  ttm.page_pool_size=33554432
+#   ttm.pages_limit=33554432 ttm.page_pool_size=33554432 
 #   transparent_hugepage=always  numa_balancing=disable
 #
 # Full example for our box (kernel 6.19.14):

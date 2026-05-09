@@ -28,6 +28,41 @@ You have a Strix Halo / gfx1151 workstation with 128 GB unified memory. You want
 
 ---
 
+## Prerequisites — install before you begin
+
+Anything not in a stock Ubuntu Server install you'll need:
+
+```bash
+sudo apt update
+sudo apt install -y \
+    build-essential cmake ninja-build git curl jq \
+    python3-venv python3-dev \
+    linux-headers-generic
+```
+
+### AMD ROCm 7.1 apt repository
+
+The bnb-from-source build (Step 5) needs `hiprand-dev`, `rocrand-dev`, `hipcub-dev`, `rocprim-dev`, `rocthrust-dev`. The llama.cpp build (Step 6) needs `/opt/rocm-7.1.0/bin/hipcc` and the ROCm clang toolchain. Both come from AMD's apt repository:
+
+```bash
+# Add the keyring
+sudo mkdir -p /etc/apt/keyrings
+wget -qO- https://repo.radeon.com/rocm/rocm.gpg.key \
+    | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+
+# Add the 7.1 repo (Ubuntu 24.04 noble)
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/7.1 noble main" \
+    | sudo tee /etc/apt/sources.list.d/rocm.list
+
+sudo apt update
+sudo apt install -y rocm-hip-runtime rocm-cmake hipcc \
+    hiprand-dev rocrand-dev hipcub-dev rocprim-dev rocthrust-dev
+```
+
+This leaves ROCm at `/opt/rocm-7.1.0/`. The Python wheels you'll install in Step 3 are a *separate* ROCm 7.13 nightly that lives entirely inside the venv and doesn't conflict with the apt-installed 7.1.
+
+---
+
 ## Hardware
 
 | Component | What we tested with | Substitutes |
@@ -50,7 +85,7 @@ You have a Strix Halo / gfx1151 workstation with 128 GB unified memory. You want
 | PyTorch | **2.11.0+rocm7.13.0a*** | gfx1151 nightly index | bf16 LoRA + AOTriton SDPA work natively |
 | flash-linear-attention | **0.5.1 from source, patched** | github.com/fla-org/flash-linear-attention | GatedDeltaNet (Qwen3.5) needs Triton kernels |
 | bitsandbytes | **0.50.0.dev0 built from source for gfx1151** | github.com/bitsandbytes-foundation/bitsandbytes | PyPI wheels ship zero ROCm binaries |
-| llama.cpp | b867+ rebuilt with `--gcc-install-dir` flag | github.com/ggerganov/llama.cpp | For inference of fine-tuned + base models |
+| llama.cpp | b867+ rebuilt with `--gcc-install-dir` flag | github.com/ggml-org/llama.cpp | For inference of fine-tuned + base models |
 | transformers / trl / peft | 5.4 / 0.29.1 / 0.18.1 | PyPI | Stable for our patterns |
 
 ---
@@ -91,11 +126,11 @@ The orchestrator is bash. The training and eval scripts are Python. They never c
 ## Quick start (for the impatient)
 
 ```bash
-# 1. Install kernel 6.19+
-sudo apt install -y linux-headers-generic
-# Mainline kernels: download from kernel.ubuntu.com/mainline/v6.19.14/amd64
+# 0. Install prereqs (build tools + ROCm 7.1 apt repo) — see Prerequisites above
+
+# 1. Install kernel 6.19+ from kernel.ubuntu.com/mainline/v6.19.14/amd64
 # Apply scripts/fix-kernel-run-parts.py to the .debs before installing
-# (see docs/02-kernel.md for details)
+# (full repack ritual is in Step 1 below)
 
 # 2. Set up sysctl + THP
 sudo cp configs/90-strix-halo-vm-tuning.conf /etc/sysctl.d/
@@ -106,12 +141,12 @@ echo defer  | sudo tee /sys/kernel/mm/transparent_hugepage/defrag
 # 3. Add /srv perm watchdog (CRITICAL — prevents random crashes mid-train)
 sudo cp configs/srv-perms-watch.cron /etc/cron.d/srv-perms-watch
 
-# 4. Add defrag helper + sudoers (replace <user> with your Linux username)
-sudo cp scripts/gpu-defrag-mem /usr/local/bin/
-sudo chmod +x /usr/local/bin/gpu-defrag-mem
+# 4. Add defrag helper + sudoers (substitutes your username automatically)
+sudo install -o root -g root -m 0755 scripts/gpu-defrag-mem /usr/local/bin/gpu-defrag-mem
 sed "s/<user>/$(whoami)/" configs/gpu-defrag-mem.sudoers \
     | sudo tee /etc/sudoers.d/gpu-defrag-mem > /dev/null
 sudo chmod 0440 /etc/sudoers.d/gpu-defrag-mem
+sudo visudo -c -f /etc/sudoers.d/gpu-defrag-mem  # validate
 
 # 5. GRUB — add ttm.* + transparent_hugepage to kernel cmdline
 # (see configs/grub-cmdline.example), then sudo update-grub && reboot
@@ -127,14 +162,17 @@ pip install --pre \
   --index-url https://rocm.nightlies.amd.com/v2-staging/gfx1151/ \
   --extra-index-url https://pypi.org/simple/
 
-# 7. Build flash-linear-attention from patched source (see §FLA below)
-# 8. Build bitsandbytes from source for ROCm gfx1151 (see §bnb below)
-# 9. Set up Telegram alerts (optional — see scripts/tg_alert.sh)
+# 7. Build flash-linear-attention from patched source (see Step 4 below)
+# 8. Build bitsandbytes from source for ROCm gfx1151 (see Step 5 below)
+# 9. Set up Telegram alerts (optional — see Step 9 below)
 
-# 10. Run the orchestrator
+# 10. Supply your own training script (see Training script contract below),
+#     then run the orchestrator
 nohup ./scripts/train_orchestrator.sh \
     --total-steps 448 \
     --output-dir /path/to/your/output \
+    --eval-data /path/to/your/eval.jsonl \
+    --history /path/to/your/eval_history.jsonl \
     --lora-r 128 --lora-alpha 256 \
     > orchestrator.log 2>&1 &
 ```
@@ -273,9 +311,10 @@ sudo chmod +x /etc/rc.local
 The sudoers drop-in lets your training user run `gpu-defrag-mem` with `sudo -n` (no password). **Replace `<user>` with your actual Linux username** before installing:
 
 ```bash
-# Install the script
-sudo cp scripts/gpu-defrag-mem /usr/local/bin/
-sudo chmod +x /usr/local/bin/gpu-defrag-mem
+# Install the script — explicit root:root + 0755 so the NOPASSWD sudoers
+# entry below isn't a privesc vector if the binary were ever writable
+# by anyone but root.
+sudo install -o root -g root -m 0755 scripts/gpu-defrag-mem /usr/local/bin/gpu-defrag-mem
 
 # Edit the sudoers file: replace <user> with your actual username
 # (e.g. paul, daisy, whatever `whoami` returns)
@@ -290,36 +329,51 @@ sudo -n /usr/local/bin/gpu-defrag-mem && echo OK
 
 If `visudo -c` reports a syntax error, the placeholder substitution failed — re-check the username doesn't contain shell-special characters.
 
+> **Why `install -o root -g root -m 0755`?** A NOPASSWD sudoers rule that points at a script which isn't strictly root-owned and 0755 (or stricter) becomes a trivial privilege-escalation path: anyone with write access to that binary can edit it to do anything. `install` sets ownership and mode atomically. `cp` + `chmod` would leave the file world-writable for a fraction of a second.
+
 ### `/srv` perm watchdog — `srv-perms-watch.cron` (this one bit us hard)
 
 Some apt postinst scripts (we suspect systemd / dpkg / snapd updates) silently chmod `/srv` to `0750`, which breaks every non-root process needing to traverse to anything under `/srv/*`. We hit this **mid-segment** during a 9-hour training run — the trainer crashed in `create_model_card → importlib.metadata.version("trl")` because the metadata path lookup couldn't traverse `/srv`. We lost the entire segment.
 
 ```bash
-sudo cp configs/srv-perms-watch.cron /etc/cron.d/srv-perms-watch
-sudo chmod 0644 /etc/cron.d/srv-perms-watch
+sudo install -o root -g root -m 0644 configs/srv-perms-watch.cron /etc/cron.d/srv-perms-watch
 # The cron now restores /srv to 755 every minute. Idempotent.
 ```
 
 You won't hit this on every system, and it's not specific to fine-tuning — it's a defensive fix for an apt postinst regression. If you're storing your venv, training output, or any long-running process state under `/srv/`, install this. It's three bytes of cron and saves you from a 9-hour-loss class of bug.
 
+> **Skip this if** you have a separate reason to keep `/srv` mode 0750 (e.g. it holds something you've intentionally hardened). The watchdog will silently weaken that hardening every minute.
+
 ---
 
 ## Step 3 — PyTorch nightly + ROCm
+
+The wheels live at AMD's gfx1151 nightly index. They're date-stamped — pick a date that has *all four* of `torch`, `torchvision`, `torchaudio`, `triton` available with matching versions. Wheels older than ~30 days are typically GC'd.
+
+Find a current date that works:
+
+```bash
+# Get the most recent torch nightly date that exists for both torch + triton:
+curl -s https://rocm.nightlies.amd.com/v2-staging/gfx1151/torch/ \
+    | grep -oE '2.11.0\+rocm7.13.0a[0-9]{8}' | sort -u | tail -5
+# Pick a date (e.g. the most recent) and substitute below.
+```
+
+Then install pinned to that date (substitute `DATE` everywhere):
 
 ```bash
 python3 -m venv /path/to/venv
 source /path/to/venv/bin/activate
 
-# Install PyTorch 2.11 + Triton 3.6 from the gfx1151 nightly index.
-# Pick a date when all four packages are available — 20260506 here.
+DATE=20260506   # ← replace with a date from the previous command
 pip install --pre \
-  "torch==2.11.0+rocm7.13.0a20260506" \
-  "torchvision==0.26.0+rocm7.13.0a20260506" \
-  "torchaudio==2.11.0+rocm7.13.0a20260506" \
-  "triton==3.6.0+rocm7.13.0a20260506" \
-  "rocm==7.13.0a20260506" \
-  "rocm-sdk-core==7.13.0a20260506" \
-  "rocm-sdk-libraries-gfx1151==7.13.0a20260506" \
+  "torch==2.11.0+rocm7.13.0a${DATE}" \
+  "torchvision==0.26.0+rocm7.13.0a${DATE}" \
+  "torchaudio==2.11.0+rocm7.13.0a${DATE}" \
+  "triton==3.6.0+rocm7.13.0a${DATE}" \
+  "rocm==7.13.0a${DATE}" \
+  "rocm-sdk-core==7.13.0a${DATE}" \
+  "rocm-sdk-libraries-gfx1151==7.13.0a${DATE}" \
   --index-url https://rocm.nightlies.amd.com/v2-staging/gfx1151/ \
   --extra-index-url https://pypi.org/simple/
 
@@ -357,15 +411,16 @@ The fix:
 git clone https://github.com/fla-org/flash-linear-attention /path/to/fla-patched
 cd /path/to/fla-patched
 
-# Apply the patches via the script in this repo
-python3 /path/to/strix-halo-llm-finetune-guide/scripts/fla_repatch.py \
-    --fla-root /path/to/fla-patched
+# Apply num_warps + cumsum patches via the script in this repo.
+# The --cumsum-backup arg points at scripts/cumsum-pytorch.py which we ship
+# (it's a verbatim copy of the patched cumsum.py from a working install).
+GUIDE=/path/to/strix-halo-llm-finetune-guide
+python3 $GUIDE/scripts/fla_repatch.py \
+    --fla-root /path/to/fla-patched \
+    --cumsum-backup $GUIDE/scripts/cumsum-pytorch.py
 
-# Replace cumsum.py with a PyTorch wrapper. We keep our patched copy at
-# /path/to/fla-cumsum-patched.py — see docs/04-fla-patches.md for
-# the contents of that file (or grab it from a previous patched checkout).
-
-# Clear stale autotune cache
+# Clear stale autotune cache (Triton caches kernels under ~/.triton/cache;
+# patched FLA produces different kernel shapes so old caches are invalid)
 rm -rf ~/.triton/cache
 find . -name __pycache__ -exec rm -rf {} +
 
@@ -373,7 +428,7 @@ find . -name __pycache__ -exec rm -rf {} +
 pip install -e .
 ```
 
-Re-run `fla_repatch.py` after every `git pull`. It's idempotent.
+Re-run `fla_repatch.py` after every `git pull` of FLA. It's idempotent — running it on already-patched code is a no-op.
 
 ---
 
@@ -452,6 +507,7 @@ print("PagedAdamW8bit step succeeded")
 If you want to run the resulting fine-tune via `llama-server`, build llama.cpp with the `--gcc-install-dir` flag (without it, ROCm 7.1.0's clang-20 can't find `<cmath>`):
 
 ```bash
+git clone https://github.com/ggml-org/llama.cpp /path/to/llama.cpp
 cd /path/to/llama.cpp
 PATH=/opt/rocm-7.1.0/bin:$PATH \
 cmake -S . -B build \
@@ -467,6 +523,43 @@ PATH=/opt/rocm-7.1.0/bin:$PATH cmake --build build --parallel $(nproc)
 ```
 
 `GGML_HIP_GRAPHS=ON` is now upstream default (b867+) but explicitly enabling doesn't hurt.
+
+---
+
+## Training script — the contract
+
+This repo intentionally does **not** ship a training script — the one we used is domain-specific (Christmas-light-show effect tool-use) and shipping it would be misleading. Instead, here's the contract `train_orchestrator.sh` expects from whatever script you put at `scripts/train_qwen3_32b.py` (or rename the orchestrator's `TRAIN_SCRIPT_NAME` variable to point at yours).
+
+**Required CLI flags** (orchestrator passes them; your script must accept them):
+
+| Flag | What it does |
+|---|---|
+| `--bf16-lora` | Train with bf16 weights + LoRA adapters (no quantization). For QLoRA NF4, just ignore the flag in your script. |
+| `--no-eval` | Disable in-process Trainer eval (orchestrator does it out-of-process) |
+| `--output-dir DIR` | Where to write `checkpoint-N/` directories. Pass through to `SFTConfig.output_dir`. |
+| `--lora-r N` | LoRA rank — pass to `LoraConfig(r=N, ...)` |
+| `--lora-alpha N` | LoRA alpha — pass to `LoraConfig(lora_alpha=N, ...)` |
+| `--epochs N` | Pass to `SFTConfig.num_train_epochs`. Used only as a fallback when `--max-steps` is 0. |
+| `--grad-accum N` | Pass to `SFTConfig.gradient_accumulation_steps` |
+| `--max-steps N` | **Critical for the orchestrator.** When > 0, must override `num_train_epochs` and pass to `SFTConfig.max_steps`. The orchestrator increments this between segments to align cleanly to `save_steps` boundaries. |
+| `--resume` | When set, call `trainer.train(resume_from_checkpoint=True)` so the latest `checkpoint-N` in `--output-dir` is loaded. |
+
+**Required behaviour:**
+
+- Use `save_steps=50` (or any value, but pass the same number to the orchestrator's `--save-steps`). The orchestrator's segment alignment math depends on this matching.
+- Save checkpoints under `--output-dir/checkpoint-N` where N is the global training step. (HuggingFace `Trainer` does this by default.)
+- On clean exit at `max_steps`, return exit code 0. The orchestrator interprets non-zero as a real failure and fires the failure Telegram alert.
+
+**Patterns from our script worth adopting** (these aren't required by the orchestrator but help with the same hardware):
+
+- `os.environ["TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL"] = "1"` **before** `import torch`
+- `os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True,garbage_collection_threshold:0.6"`
+- `torch.cuda.set_per_process_memory_fraction(0.80)` to cap GPU at 102 GB and leave room for the OS on the unified pool
+- For Qwen3.5 hybrid (GatedDeltaNet): `attn_implementation="eager"` — SDPA crashes on this architecture
+- A "lazy shard loader" patch to `transformers.modeling_utils.safe_open` so the 27B model loads one shard at a time rather than mmap'ing all 17 simultaneously (otherwise you exhaust the unified pool during load)
+- `optim="paged_adamw_8bit"` (requires the bnb-from-source build from Step 5)
+
+A minimal working example (no Aurora-specific bits, just the contract above) is in `examples/training_script_skeleton.py`.
 
 ---
 
@@ -540,17 +633,17 @@ So segment 1 trains 87→100 (13 steps), trainer's auto-save fires at step 100, 
 
 `scripts/tg_alert.sh` is a 50-line bash helper that sends HTML messages to a Telegram bot. Set up:
 
-1. Talk to `@BotFather` on Telegram, create a bot, save the token.
-2. Get your numeric chat ID from `@userinfobot`.
-3. Store credentials:
+1. Talk to [`@BotFather`](https://t.me/BotFather) on Telegram, create a bot, save the token.
+2. Message [`@userinfobot`](https://t.me/userinfobot) `/start` and it returns your numeric chat ID immediately.
+3. Store the credentials. **Quote the values** — Telegram tokens contain `:` and `_` and other characters that can confuse a `source` if the value isn't quoted:
 
 ```bash
 sudo mkdir -p /etc/strix-halo
 sudo tee /etc/strix-halo/telegram.env > /dev/null <<EOF
-TELEGRAM_BOT_TOKEN=<your-token>
-TELEGRAM_CHAT_ID=<your-chat-id>
+TELEGRAM_BOT_TOKEN="<your-token>"
+TELEGRAM_CHAT_ID="<your-chat-id>"
 EOF
-sudo chown root:<user> /etc/strix-halo/telegram.env
+sudo chown "root:$(whoami)" /etc/strix-halo/telegram.env
 sudo chmod 0640 /etc/strix-halo/telegram.env
 ```
 
@@ -558,7 +651,7 @@ sudo chmod 0640 /etc/strix-halo/telegram.env
 
 ```bash
 ./scripts/tg_alert.sh "<b>Test</b> — Strix Halo guide setup OK"
-# Should appear in your Telegram chat.
+# Should appear in your Telegram chat within ~1 second.
 ```
 
 The orchestrator sends:
@@ -610,14 +703,16 @@ strix-halo-llm-finetune-guide/
 │   ├── tg_alert.sh                        # Telegram alert helper
 │   ├── gpu-defrag-mem                     # compact_memory + drop_caches wrapper
 │   ├── fix-kernel-run-parts.py            # mainline kernel .deb fixer
-│   └── fla_repatch.py                     # FLA num_warps + cumsum patcher
+│   ├── fla_repatch.py                     # FLA num_warps + cumsum patcher
+│   └── cumsum-pytorch.py                  # patched cumsum.py to swap into FLA
 ├── configs/
 │   ├── 90-strix-halo-vm-tuning.conf       # → /etc/sysctl.d/
 │   ├── gpu-defrag-mem.sudoers             # → /etc/sudoers.d/gpu-defrag-mem
 │   ├── srv-perms-watch.cron               # → /etc/cron.d/srv-perms-watch
 │   └── grub-cmdline.example               # → edits to /etc/default/grub
-└── docs/
-    └── (deep dives — to be expanded)
+└── examples/
+    └── training_script_skeleton.py        # minimal SFTTrainer script that
+                                           # satisfies the orchestrator contract
 ```
 
 ---
