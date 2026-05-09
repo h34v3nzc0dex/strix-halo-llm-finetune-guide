@@ -465,9 +465,9 @@ PATH=/opt/rocm-7.1.0/bin:$PATH cmake --build build --config Release
 
 # Symlink: bnb's runtime version detection expects libbitsandbytes_rocm713.so
 # on PyTorch 2.10/2.11 + HIP 7.13, but the build produced rocm83.so.
-cd bitsandbytes
-ln -sf libbitsandbytes_rocm83.so libbitsandbytes_rocm713.so
-cd ..
+# Absolute paths so this works regardless of caller's current directory.
+ln -sf /path/to/bnb-rocm/bitsandbytes/libbitsandbytes_rocm83.so \
+       /path/to/bnb-rocm/bitsandbytes/libbitsandbytes_rocm713.so
 
 # Install editable (replaces PyPI bnb)
 pip uninstall -y bitsandbytes
@@ -669,11 +669,12 @@ The orchestrator sends:
 
 This guide was developed on a real production fine-tune. Excerpt from `eval_history.jsonl`:
 
-```json
+```jsonl
 {"step":87,"eval_loss":0.1324,"eval_perplexity":1.1416,"eval_token_accuracy":0.9646,"n_samples":48,"timestamp":"2026-05-07T23:42:02Z"}
 {"step":100,"eval_loss":0.1312,"eval_perplexity":1.1402,"eval_token_accuracy":0.9645,"n_samples":48,"timestamp":"2026-05-08T03:46:07Z"}
-{"step":150,"eval_loss":<filled in as runs land>,...}
 ```
+
+Each line is a complete eval run; subsequent segments append one line. The orchestrator's Telegram alert reads the bottom two entries and reports the delta.
 
 Target: 448 steps total. Step time: ~11 min. Total wall-clock: ~4 days. GPU temp range during training: 60–72 °C with `power_dpm_force_performance_level=auto`. Peak GPU memory: ~80 GB reserved during training, ~73 GB during eval.
 

@@ -54,9 +54,44 @@ while [[ $# -gt 0 ]]; do
         --grad-accum) GRAD_ACCUM="$2"; shift 2;;
         --base-model) BASE_MODEL="$2"; shift 2;;
         -h|--help)
-            grep -E '^# ' "$0" | head -25
+            cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Drives a multi-day LoRA fine-tune as a sequence of save_steps-aligned
+training segments with out-of-process eval between segments. Resume-safe.
+
+Options (with current defaults):
+  --total-steps N      Final global step (default: $TOTAL_STEPS)
+  --save-steps N       MUST match training script's save_steps (default: $SAVE_STEPS)
+  --output-dir DIR     Where checkpoint-N/ directories land (default: $OUTPUT_DIR)
+  --eval-data PATH     JSONL eval set (default: $EVAL_DATA)
+  --history PATH       Append-only JSONL trend log (default: $HISTORY)
+  --lora-r N           LoRA rank (default: $LORA_R)
+  --lora-alpha N       LoRA alpha (default: $LORA_ALPHA)
+  --epochs N           Fallback when --max-steps is not used (default: $EPOCHS)
+  --grad-accum N       Gradient accumulation steps (default: $GRAD_ACCUM)
+  --base-model NAME    HF model id passed through to eval (default: $BASE_MODEL)
+  -h, --help           This help.
+
+Environment:
+  DRY_RUN=1            Print the training command instead of running it.
+  TG_DRY_RUN=1         Print Telegram messages to stderr instead of sending.
+
+The training script at scripts/\$TRAIN_SCRIPT_NAME (currently $TRAIN_SCRIPT_NAME)
+must accept: --bf16-lora --no-eval --output-dir --lora-r --lora-alpha
+             --epochs --grad-accum --max-steps --resume
+See README "Training script — the contract" for details.
+
+Recommended invocation:
+  nohup $(basename "$0") --total-steps 448 \\
+      --output-dir /path/to/output \\
+      --eval-data /path/to/eval.jsonl \\
+      --history /path/to/eval_history.jsonl \\
+      --lora-r 128 --lora-alpha 256 \\
+      > orchestrator.log 2>&1 &
+EOF
             exit 0;;
-        *) echo "Unknown arg: $1" >&2; exit 2;;
+        *) echo "Unknown arg: $1" >&2; echo "Run $(basename "$0") -h for usage." >&2; exit 2;;
     esac
 done
 
@@ -87,9 +122,12 @@ vram_used_bytes() {
 
 # Wait for: (a) no train process, (b) VRAM <5GB, (c) defrag.
 # Returns 0 on success, non-zero on timeout.
+# Match python interpreter + script name specifically — `pgrep -f scriptname`
+# alone matches anything with that string in argv (e.g. `tail -f train.log`).
 wait_gpu_release() {
     local poll=5 cap=120 waited=0
-    while pgrep -f "$TRAIN_SCRIPT_NAME" >/dev/null 2>&1; do
+    local train_pattern="python3? .*${TRAIN_SCRIPT_NAME}"
+    while pgrep -f "$train_pattern" >/dev/null 2>&1; do
         if (( waited >= cap )); then
             echo "[gpu-release] train process still alive after ${cap}s" >&2
             return 1
