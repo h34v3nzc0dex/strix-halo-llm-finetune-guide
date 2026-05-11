@@ -123,7 +123,16 @@ def main():
     parser.add_argument("--ngl", type=int, default=999,
                         help="Number of layers to offload to GPU (999 = all)")
     parser.add_argument("--timeout", type=int, default=7200,
-                        help="Max seconds for llama-perplexity to run (default 2 h)")
+                        help="Max seconds for llama-perplexity to run. "
+                             "Sized for a multi-hundred-sample eval JSONL "
+                             "(corpus order-of-magnitude ~1M tokens) "
+                             "concatenated and sliding-windowed at "
+                             "--ctx-size. Roughly: chunks = total_tokens / "
+                             "ctx_size, time = ~20s/chunk on Strix Halo + "
+                             "model load. Lower this if your eval-data "
+                             "corpus is smaller; the original 1800 s "
+                             "default was too tight for ctx=8192 once the "
+                             "concat exceeded ~500k tokens.")
     args = parser.parse_args()
 
     # Resolve --metrics-out from --adapter if not explicitly given
