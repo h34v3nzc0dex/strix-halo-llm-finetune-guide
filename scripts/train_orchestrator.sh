@@ -187,16 +187,23 @@ python3 scripts/$TRAIN_SCRIPT_NAME \
     return "$rc"
 }
 
+# Eval path selector. 'llama' = eval_via_llama_perplexity.py (storm-free, see
+# Step 7b in README). 'hf' = eval_checkpoint.py (legacy; triggers the Step 7
+# storm on Strix Halo and is kept only for diff testing on other hardware).
+EVAL_METHOD="${EVAL_METHOD:-llama}"
+# Base-model GGUF -- required by the llama path, ignored by the hf path.
+BASE_GGUF="${BASE_GGUF:-/path/to/qwen3.5-27b-q8_0.gguf}"
+
 # Run eval on checkpoint-$1. Returns python exit code (NON-FATAL to caller).
 run_eval() {
     local step="$1"
     local adapter_dir="$OUTPUT_DIR/checkpoint-$step"
     if [[ "${DRY_RUN:-0}" == "1" ]]; then
-        echo "[DRY_RUN] would eval: $adapter_dir against $EVAL_DATA, history=$HISTORY"
+        echo "[DRY_RUN] would eval ($EVAL_METHOD): $adapter_dir against $EVAL_DATA, history=$HISTORY"
         return 0
     fi
     {
-        echo "=== $(date -Is) eval step $step ==="
+        echo "=== $(date -Is) eval step $step  EVAL_METHOD=$EVAL_METHOD ==="
     } >> "$EVAL_LOG"
 
     set +e
@@ -204,12 +211,28 @@ run_eval() {
         cd /path/to/workspace
         # shellcheck disable=SC1091
         source venv/bin/activate
-        python3 scripts/eval_checkpoint.py \
-            --base-model "$BASE_MODEL" \
-            --adapter "$adapter_dir" \
-            --eval-data "$EVAL_DATA" \
-            --max-samples 50 \
-            --history "$HISTORY"
+        if [[ "$EVAL_METHOD" == "llama" ]]; then
+            # Storm-free path (recommended on Strix Halo). Auto-converts the
+            # LoRA to GGUF on first use, cached at <adapter>/gguf/lora-f16.gguf
+            # (~1.9 GiB f16 for r=128, ~8 s once).
+            python3 scripts/eval_via_llama_perplexity.py \
+                --base-model "$BASE_MODEL" \
+                --gguf "$BASE_GGUF" \
+                --adapter "$adapter_dir" \
+                --eval-data "$EVAL_DATA" \
+                --max-samples 50 \
+                --history "$HISTORY"
+        else
+            # Legacy HF path. Triggers the Step 7 TLB-IPI storm on Strix Halo --
+            # use only on hardware that has INVLPGB or as a deliberate
+            # comparison run.
+            python3 scripts/eval_checkpoint.py \
+                --base-model "$BASE_MODEL" \
+                --adapter "$adapter_dir" \
+                --eval-data "$EVAL_DATA" \
+                --max-samples 50 \
+                --history "$HISTORY"
+        fi
     ) >> "$EVAL_LOG" 2>&1
     local rc=$?
     set -e
@@ -453,12 +476,22 @@ main() {
                 cd /path/to/workspace
                 # shellcheck disable=SC1091
                 source venv/bin/activate
-                python3 scripts/eval_checkpoint.py \
-                    --base-model "$BASE_MODEL" \
-                    --adapter "$OUTPUT_DIR/final" \
-                    --eval-data "$EVAL_DATA" \
-                    --max-samples 50 \
-                    --history "$HISTORY"
+                if [[ "$EVAL_METHOD" == "llama" ]]; then
+                    python3 scripts/eval_via_llama_perplexity.py \
+                        --base-model "$BASE_MODEL" \
+                        --gguf "$BASE_GGUF" \
+                        --adapter "$OUTPUT_DIR/final" \
+                        --eval-data "$EVAL_DATA" \
+                        --max-samples 50 \
+                        --history "$HISTORY"
+                else
+                    python3 scripts/eval_checkpoint.py \
+                        --base-model "$BASE_MODEL" \
+                        --adapter "$OUTPUT_DIR/final" \
+                        --eval-data "$EVAL_DATA" \
+                        --max-samples 50 \
+                        --history "$HISTORY"
+                fi
             ) >> "$EVAL_LOG" 2>&1
             eval_rc=$?
             set -e

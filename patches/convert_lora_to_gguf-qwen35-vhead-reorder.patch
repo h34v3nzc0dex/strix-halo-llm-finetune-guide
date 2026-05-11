@@ -1,0 +1,59 @@
+--- a/convert_lora_to_gguf.py
++++ b/convert_lora_to_gguf.py
+@@ -371,6 +371,56 @@
+ 
+             lora_alpha: float
+ 
++            @staticmethod
++            def _reorder_v_heads(tensor, dim: int, num_k_heads: int, num_v_per_k: int, head_dim: int):
++                """LoRA-aware override of _LinearAttentionVReorderBase._reorder_v_heads.
++
++                The parent does reshape→permute→reshape, which the LazyTensor wrapper
++                can't always support (specifically the dim=last-row reshape for out_proj).
++                The whole operation is mathematically equivalent to a permutation of
++                elements along `dim`. We compute the permutation directly and apply it
++                via index_select to either lora_B (dim corresponds to out/rows) or
++                lora_A's last dim (dim corresponds to in/cols). Verified numerically
++                equivalent on synthetic tensors 2026-05-10.
++                """
++                if isinstance(tensor, LoraTorchTensor):
++                    N = num_k_heads * num_v_per_k * head_dim
++                    assert tensor.shape[dim] == N, (
++                        f"_reorder_v_heads: dim {dim} size {tensor.shape[dim]} != K*V*H = {N}"
++                    )
++                    # Build permutation: result[new_p] = original[old_p]
++                    perm = torch.empty(N, dtype=torch.long)
++                    for new_p in range(N):
++                        v = new_p // (num_k_heads * head_dim)
++                        k = (new_p % (num_k_heads * head_dim)) // head_dim
++                        h = new_p % head_dim
++                        perm[new_p] = k * num_v_per_k * head_dim + v * head_dim + h
++
++                    lora_A = tensor._lora_A
++                    lora_B = tensor._lora_B
++
++                    # Normalize negative dim
++                    ndim = len(tensor.shape)
++                    d = dim if dim >= 0 else dim + ndim
++
++                    if d == 0:
++                        # Reordering rows of conceptual W = rows of B
++                        # B has shape (..., out_dim, rank); leading dims of B match leading dims of W
++                        lora_B = lora_B.index_select(0, perm)
++                    elif d == ndim - 1:
++                        # Reordering cols of conceptual W = last dim of A
++                        # A has shape (..., rank, in_dim); the last dim is in_dim
++                        lora_A = lora_A.index_select(-1, perm)
++                    else:
++                        # Middle dim — not used by current Qwen3.5 modify_tensors paths
++                        raise NotImplementedError(
++                            f"_reorder_v_heads on LoRA with middle dim={dim} not supported"
++                        )
++                    return LoraTorchTensor(lora_A, lora_B)
++
++                # Non-LoRA path: defer to parent (dense tensor)
++                return model_class._reorder_v_heads(tensor, dim, num_k_heads, num_v_per_k, head_dim)
++
+             def __init__(self, *args, dir_lora_model: Path, lora_alpha: float, **kwargs):
+ 
+                 super().__init__(*args, **kwargs)

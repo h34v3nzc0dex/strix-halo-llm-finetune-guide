@@ -17,8 +17,10 @@ If you tried to fine-tune a ≥27B model on a Strix Halo box and ran into:
 - TRL crashing in `create_model_card` with `PackageNotFoundError: trl`
 - Linux mainline `.deb` kernels failing to install with `run-parts: missing operand`
 - `/srv` perms randomly regressing to `0750` after `apt upgrade`
+- **Mid-training eval mysteriously freezes the box** at ~66 % weight load with `/proc/interrupts:TLB:` rate spiking past 1 M/sec — even after every fix above is in place
+- **`convert_lora_to_gguf.py` blowing up** on Qwen3.5 LoRA adapters with `NotImplementedError: can't reshape the row size trivially`, blocking any attempt to use `llama-perplexity --lora` as the eval path
 
-…this guide solves every one of those. It's the writeup of about a week of iteration on a real production fine-tune. We don't claim novelty on any individual piece — but the *combination* on this hardware isn't documented anywhere else we could find.
+…this guide solves every one of those. It's the writeup of about a week of iteration on a real production fine-tune, plus a follow-up week of root-causing the TLB-IPI storm (Step 7) and shipping the storm-free eval path (Step 7b–c). We don't claim novelty on any individual piece — but the *combination* on this hardware isn't documented anywhere else we could find.
 
 ---
 
@@ -559,21 +561,113 @@ This repo intentionally does **not** ship a training script — the one we used 
 - A "lazy shard loader" patch to `transformers.modeling_utils.safe_open` so the 27B model loads one shard at a time rather than mmap'ing all 17 simultaneously (otherwise you exhaust the unified pool during load)
 - `optim="paged_adamw_8bit"` (requires the bnb-from-source build from Step 5)
 
-A minimal working example (no Aurora-specific bits, just the contract above) is in `examples/training_script_skeleton.py`.
+A minimal working example (just the contract above, no project-specific glue) is in `examples/training_script_skeleton.py`.
 
 ---
 
 ## Step 7 — The eval problem
 
-In-process Trainer eval **does not work** at 27B + 8192 seq length on Strix Halo. We have three documented failure modes from real runs:
+In-process Trainer eval **does not work** at 27B + 8192 seq length on Strix Halo. We have **four** documented failure modes from real runs:
 
 1. **`page allocation failure: order:0`** in `ttm_pool_alloc_page`. The unified-memory page allocator's free-list is fragmented — the GPU can't get a single contiguous 4 KB page despite 90%+ system RAM free. Killed by amdgpu kernel module.
 2. **`memory-watchdog SIGKILL`** when eval pushes free RAM under the watchdog threshold (8 GB on our box). Eager attention matrix on 24 heads × 8192² float32 ≈ 25 GB on top of the 60 GB training state — ~50 GB consumed in ~23 seconds during the eval batches.
 3. **`importlib.metadata.PackageNotFoundError: trl`** in TRL's `_save_checkpoint → create_model_card`. This one was caused by `/srv` perms regressing mid-segment, breaking the venv's metadata path traversal.
+4. **System hang / near-freeze at ~66 % weight-load**, with `/proc/interrupts:TLB:` rate climbing past 1 M/sec. The box becomes unresponsive long enough that `journald` stops flushing; the only recovery is a hard reset. This is the most subtle failure of the four because the trainer doesn't crash — the *kernel* does.
 
-The system-tuning stack from §2 fixes (1) and (3) — but **(2) is structural**. Eval and training simply cannot coexist in the same process at 128 GB unified memory + 27B models.
+The system-tuning stack from §2 fixes (1) and (3) — but **(2) is structural**: eval and training simply cannot coexist in the same process at 128 GB unified memory + 27B models. The solution is to **move eval out-of-process** — covered by `eval_checkpoint.py` and the orchestrator in §8.
 
-The solution is to **move eval out-of-process**.
+**(4) is also structural, and turned out to be much deeper than we initially thought.** The HF Transformers weight-load path mmaps each safetensors shard into the page cache. With a 27 B-class bf16 model that's ~54 GB of file-backed pages on top of the eval process's transient anon allocations. The kernel's `mm/vmscan.c` reclaim path walks the LRU, calls `try_to_unmap_one()`, which batches into `try_to_unmap_flush_dirty()` and ultimately fires `arch_tlbbatch_flush()`. On AMD Strix Halo (Zen 5 mobile) the CPUID flag `INVLPGB` is **not exposed**, so the kernel can't use the broadcast-asid fast path — every batched flush fans out as a per-CPU IPI to every CPU in the process's `mm_cpumask`. With Python's 32-thread default, that's 32 IPIs per batched flush. Reclaim does thousands per second under load. ⇒ Storm.
+
+We chased this through three wrong subsystems before pinning it. The full trace methodology (`ftrace` function_graph + `kprobe tlb:tlb_flush` with stacktraces) and the 99.05 %-of-shootdowns-are-`vmscan` finding live in commits/branches of the source project this guide was extracted from — but the actionable parts are below:
+
+- **The kernel patch we *thought* would fix it doesn't.** The original hypothesis was that `amdgpu`'s `svm_range_restore_work` was the source; coalescing it with `AMDGPU_SVM_RANGE_RESTORE_DELAY_MS=100` cut the storm in half but didn't eliminate it. Tracing later showed `amdgpu` accounts for **<0.01 %** of the IPI shootdowns. Don't patch the kernel for this.
+- **Userspace mitigations alone don't work either.** We tried `drop_caches` + `vm.swappiness=0`, `mlockall(MCL_FUTURE)` early in the process, pre-mlocking the safetensors source pages — every test either left the storm intact OR removed the kernel's reclaim safety valve and let global OOM-killer fire. The trade-off cliff is documented in the source project. **There is no userspace knob that simultaneously avoids the storm AND fits in 128 GiB on this hardware.**
+- **The fix is to stop using HF Transformers for eval entirely.** Skip to §7b.
+
+---
+
+---
+
+## Step 7b — Storm-free eval via `llama-perplexity`
+
+The pivot: load weights through `llama.cpp` (mmap + selective `--mlock`) instead of HF Transformers (mmap → pagecache pressure → reclaim storm). `llama-perplexity` supports `--lora <adapter.gguf>` so we can keep LoRA training in HF land and only switch the *eval* path.
+
+Measured deltas on identical workload (eval-on-5 against a 27 B-class checkpoint):
+
+|                          | HF Transformers (Step 7 path) | `llama-perplexity` (Step 7b path) |
+| ---                      | ---                           | ---                               |
+| Peak TLB IPI rate        | ~1.2 M / sec                  | ~110 / sec                        |
+| Avg TLB IPI rate         | ~340 k / sec                  | ~110 / sec (no storm)             |
+| Total IPIs over the run  | ~48 M in 141 s before freeze  | ~48 k in 436 s                    |
+| Reduction                | —                             | **~3 100×**                       |
+| eval_metrics.json produced? | No (stall / freeze)        | Yes                               |
+
+`scripts/eval_via_llama_perplexity.py` is a drop-in replacement for `eval_checkpoint.py` from the orchestrator's perspective — same `--adapter / --eval-data / --history / --max-samples` contract, same history JSONL schema.
+
+**Quickstart:**
+
+```bash
+# Eval a merged-model GGUF (no LoRA)
+python3 scripts/eval_via_llama_perplexity.py \
+    --gguf /path/to/qwen3.5-27b-q8_0.gguf \
+    --eval-data /path/to/eval.jsonl \
+    --metrics-out /tmp/eval_metrics.json
+
+# Eval a base GGUF + LoRA adapter at runtime
+# (auto-converts safetensors→GGUF on first use, cached at <adapter>/gguf/lora-f16.gguf)
+python3 scripts/eval_via_llama_perplexity.py \
+    --gguf /path/to/qwen3.5-27b-q8_0.gguf \
+    --adapter /path/to/output/checkpoint-200 \
+    --eval-data /path/to/eval.jsonl \
+    --history /path/to/eval_history.jsonl
+```
+
+The harness:
+
+1. Loads the HF tokenizer (~50 MB — storm-free).
+2. Templates up to `--max-samples` JSONL records via `apply_chat_template`.
+3. If `--adapter` is given without `--lora`, converts the adapter to GGUF via the patched `convert_lora_to_gguf.py` (see §7c) and caches at `<adapter>/gguf/lora-f16.gguf` (~1.9 GiB f16 for r=128, α=256, ~8 s once).
+4. Runs `llama-perplexity -m <base> --mlock -ngl 999 [--lora <adapter.gguf>] -c 8192 -f <tmp.txt> --no-warmup`.
+5. Parses `Final estimate: PPL = X` from stdout, computes `eval_loss = ln(PPL)`, writes the per-checkpoint `eval_metrics.json` and (optionally) appends to the orchestrator's history JSONL.
+
+**`eval_token_accuracy` is `null`** in the llama path — `llama-perplexity` doesn't compute argmax token-accuracy. For trend tracking that doesn't matter (relative eval_loss across checkpoints is the actual signal); for absolute comparison against historical HF-eval numbers it does — those numbers won't line up exactly because llama-perplexity scores the *entire* conversation including system/user turns where HF masked them. The trajectory shape is preserved, the absolute floor isn't.
+
+---
+
+## Step 7c — Patching `convert_lora_to_gguf.py` for Qwen3.5
+
+`llama.cpp`'s LoRA converter doesn't support Qwen3.5's GQA V-head reorder for LoRA tensors. First attempt crashes with:
+
+```
+File "convert_hf_to_gguf.py", line 5354, in _reorder_v_heads
+    tensor = tensor.reshape(*new_shape)
+File "convert_lora_to_gguf.py", line 154, in reshape
+    raise NotImplementedError  # can't reshape the row size trivially
+```
+
+The full diagnosis: the Qwen3.5 model class calls `_LinearAttentionVReorderBase._reorder_v_heads(dim=1, ...)` on the SSM `out_proj` LoRA tensor. `LazyTensor`'s shape primitive encodes only `(*B.shape[:-1], A.shape[-1])` — one in-dim. The reorder needs to grow that into 4D (`out, num_k_heads, num_v_per_k, head_v_dim`) and the wrapper can't represent it.
+
+**Fix:** apply [`patches/convert_lora_to_gguf-qwen35-vhead-reorder.patch`](patches/convert_lora_to_gguf-qwen35-vhead-reorder.patch). It overrides `_reorder_v_heads` on the dynamic `LoraModel` class and applies the equivalent column-permutation directly via `tensor.index_select(...)` on `lora_A` or `lora_B`. Bypasses the LazyTensor limitation entirely. Numerically equivalent to the parent's reshape→permute→reshape (verification snippet in `patches/README.md`).
+
+**Apply:**
+
+```bash
+cd /path/to/llama.cpp
+patch -p1 < /path/to/this/repo/patches/convert_lora_to_gguf-qwen35-vhead-reorder.patch
+```
+
+**Then convert any checkpoint:**
+
+```bash
+cd /path/to/llama.cpp
+python3 convert_lora_to_gguf.py /path/to/output/checkpoint-N \
+    --outfile /path/to/output/checkpoint-N/gguf/lora-f16.gguf \
+    --outtype f16
+```
+
+`scripts/eval_via_llama_perplexity.py` does this automatically the first time it sees a checkpoint without a cached GGUF — no manual step needed if you use the harness.
+
+This patch is worth upstreaming to `ggml-org/llama.cpp`. If you submit a PR, the verification snippet in `patches/README.md` should travel with the change so reviewers can confirm numerical equivalence.
 
 ---
 
@@ -583,7 +677,9 @@ The solution is to **move eval out-of-process**.
 
 1. Trainer reaches `max_steps` cleanly, writes checkpoint, exits → process dies → GPU memory fully releases.
 2. `wait_gpu_release()` confirms `pgrep` empty + VRAM-used < 5 GB + runs the defrag helper.
-3. `eval_checkpoint.py` spawns as a **fresh process**, loads base model + adapter from the just-saved checkpoint, runs eval over a 50-sample subset, appends one line to `eval_history.jsonl`.
+3. Eval spawns as a **fresh process**, loads base model + adapter from the just-saved checkpoint, runs eval over a 50-sample subset, appends one line to `eval_history.jsonl`. The eval invocation is governed by the **`EVAL_METHOD`** env var:
+   - `EVAL_METHOD=llama` (recommended on Strix Halo) — uses `scripts/eval_via_llama_perplexity.py` (§7b). Storm-free. Auto-converts each checkpoint's LoRA to GGUF on first eval (cached at `<checkpoint>/gguf/lora-f16.gguf`).
+   - `EVAL_METHOD=hf` (legacy) — uses `scripts/eval_checkpoint.py`. Will trigger the §7 storm on Strix Halo. Kept only for rollback / diff testing on different hardware.
 4. Orchestrator parses last 2 history entries, computes Δ, sends Telegram with success/comparison or warning.
 5. Loop until total_steps reached.
 
@@ -684,8 +780,11 @@ Target: 448 steps total. Step time: ~11 min. Total wall-clock: ~4 days. GPU temp
 
 We're not done; this guide is a snapshot, not a victory lap.
 
-- **Eval still takes ~5–10 min per checkpoint.** The base model has to reload each time. Could be amortized with a long-running eval daemon that holds the model warm.
-- **`svm_range_restore_work` thrash** during heavy GPU bursts is an open AMD bug ([ROCm#5952](https://github.com/ROCm/ROCm/issues/5952)). The Oct 2025 patch on amd-gfx covers only the MADV_FREE deadlock, not the CPU-hog-during-attention case. We work around it by exiting the training process between segments.
+- **Eval still takes ~5–10 min per checkpoint** in the §7b path (more on eval-on-50 at 27 B). The base model has to mmap-and-mlock each time. A long-running `llama-server`-backed eval daemon that holds the model warm would amortize this; not built yet.
+- **Why `INVLPGB` isn't exposed on Strix Halo.** Zen 5 architecturally supports it, but `/proc/cpuinfo` flags on the AMD Ryzen AI MAX+ 395 don't list it. If it's a microcode-detection gap (kernel `arch/x86/kernel/cpu/amd.c`) or a genuine silicon non-implementation on Zen 5 mobile, we don't know — and we haven't dug. If `INVLPGB` were available the §7 storm class would collapse to one instruction system-wide. Worth a mailing-list inquiry to AMD's kernel team.
+- **`PAGEVEC_SIZE = 31` is structural** in `include/linux/pagevec.h`. The `mm/vmscan.c` reclaim path batches dirty folios into pagevecs and fires `try_to_unmap_flush_dirty` every 31 entries. Tuning this (or wiring a sysctl knob) would proportionally cut the IPI rate on no-`INVLPGB` boxes. Real upstream `mm/` work; out of scope here.
+- **The `convert_lora_to_gguf` Qwen3.5 patch isn't upstream yet.** Patch + verification snippet are in `patches/`. Until someone (you?) submits the PR to `ggml-org/llama.cpp`, anyone on Qwen3.5 LoRA needs to apply the patch manually.
+- **`svm_range_restore_work` thrash** during heavy GPU bursts is an open AMD bug ([ROCm#5952](https://github.com/ROCm/ROCm/issues/5952)). The Oct 2025 patch on amd-gfx covers only the MADV_FREE deadlock, not the CPU-hog-during-attention case. We work around it by exiting the training process between segments. This is a **different** issue from the §7 storm — it's GPU-side, while §7 is CPU-side.
 - **Why `/srv` perms regress** is still unknown. We have a cron watchdog as defense in depth, but the actual postinst script doing the chmod hasn't been pinned down. If you find it, file a bug.
 - **TRL `create_model_card` is fragile.** It calls `importlib.metadata.version("trl")` which traverses sys.path and silently fails if any `.dist-info` dir is unreachable. A more defensive trl would catch this.
 - **PyTorch 2.11 nightly is unstable by definition.** Pin a specific date that worked for you.
@@ -700,7 +799,8 @@ strix-halo-llm-finetune-guide/
 ├── LICENSE                                # MIT
 ├── scripts/
 │   ├── train_orchestrator.sh              # segment orchestrator (bash)
-│   ├── eval_checkpoint.py                 # standalone out-of-process eval
+│   ├── eval_checkpoint.py                 # legacy HF eval (storm-prone on Strix Halo, §7)
+│   ├── eval_via_llama_perplexity.py       # storm-free eval via llama-perplexity (§7b)
 │   ├── tg_alert.sh                        # Telegram alert helper
 │   ├── gpu-defrag-mem                     # compact_memory + drop_caches wrapper
 │   ├── fix-kernel-run-parts.py            # mainline kernel .deb fixer
@@ -711,6 +811,10 @@ strix-halo-llm-finetune-guide/
 │   ├── gpu-defrag-mem.sudoers             # → /etc/sudoers.d/gpu-defrag-mem
 │   ├── srv-perms-watch.cron               # → /etc/cron.d/srv-perms-watch
 │   └── grub-cmdline.example               # → edits to /etc/default/grub
+├── patches/
+│   ├── README.md                          # how to apply + numerical verification
+│   └── convert_lora_to_gguf-qwen35-       # Qwen3.5 GQA V-head reorder LoRA fix
+│       vhead-reorder.patch                #   for llama.cpp's convert_lora_to_gguf.py (§7c)
 └── examples/
     └── training_script_skeleton.py        # minimal SFTTrainer script that
                                            # satisfies the orchestrator contract
