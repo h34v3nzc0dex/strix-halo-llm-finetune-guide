@@ -1,0 +1,17 @@
+cleared Triton cache
+torch 2.11.0+rocm7.13.0a20260506  triton 3.6.0  hip 7.13.26176
+fla.__file__: /tmp/fla-vanilla/fla/__init__.py (override OK: True)
+
+--- Qwen3.5-27B-ish T=8192 K=128 V=128: B=1 T=8192 H=16 HV=16 K=128 V=128 ---
+  FORWARD OK: out.shape=(1, 8192, 16, 128)
+  BACKWARD OK: grads have NaN: q=False  k=False  v=False
+
+--- longer chunks T=4096 K=256: B=1 T=4096 H=8 HV=8 K=256 V=256 ---
+  FORWARD OK: out.shape=(1, 4096, 8, 256)
+  BACKWARD OK: grads have NaN: q=False  k=False  v=False
+
+--- batched T=2048: B=2 T=2048 H=16 HV=16 K=128 V=128 ---
+  FORWARD OK: out.shape=(2, 2048, 16, 128)
+  BACKWARD OK: grads have NaN: q=False  k=False  v=False
+
+--- ALL LARGE-SHAPE PROBES SUCCEEDED ---

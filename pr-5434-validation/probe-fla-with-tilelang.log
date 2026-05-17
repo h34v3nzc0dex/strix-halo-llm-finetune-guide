@@ -1,0 +1,106 @@
+/tmp/tilelang-test/tvm_ffi/_optional_torch_c_dlpack.py:181: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+We recommend installing via `pip install torch-c-dlpack-ext`
+  warnings.warn(
+/tmp/tilelang-test/tvm_ffi/_optional_torch_c_dlpack.py:181: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+We recommend installing via `pip install torch-c-dlpack-ext`
+  warnings.warn(
+cleared Triton cache
+torch 2.11.0+rocm7.13.0a20260506  triton 3.6.0  hip 7.13.26176
+fla.__file__: /tmp/fla-vanilla/fla/__init__.py
+tilelang.__file__: /tmp/tilelang-test/tilelang/__init__.py
+
+TileLangBackend.is_available(): True
+(this is what FLA's dispatcher checks before considering the TileLang path)
+
+--- Qwen3.5-27B-ish: B=1 T=8192 H=16 K=128 V=128, bf16, fwd+bwd ---
+calling fwd...
+FWD OK: out.shape=(1, 8192, 16, 128)
+calling bwd (this is where chunk_bwd_dqkwg dispatch fires)...
+[19:50:24] /project/3rdparty/tvm/src/target/target_kind.cc:240: Warning: Unable to detect ROCm version, assuming >= 3.5
+2026-05-16 19:50:24  [TileLang:tilelang.jit.kernel:INFO]: TileLang begins to compile kernel `kernel` with `out_idx=None`
+Traceback (most recent call last):
+  File "/tmp/probe-fla-with-tilelang.py", line 55, in <module>
+    loss.backward()
+  File "/srv/aurora-ai/venv/lib/python3.12/site-packages/torch/_tensor.py", line 631, in backward
+    torch.autograd.backward(
+  File "/srv/aurora-ai/venv/lib/python3.12/site-packages/torch/autograd/__init__.py", line 381, in backward
+    _engine_run_backward(
+  File "/srv/aurora-ai/venv/lib/python3.12/site-packages/torch/autograd/graph.py", line 869, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/srv/aurora-ai/venv/lib/python3.12/site-packages/torch/autograd/function.py", line 317, in apply
+    return user_fn(self, *args)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/fla-vanilla/fla/utils.py", line 227, in wrapper
+    return fn(*processed_args, **processed_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/srv/aurora-ai/venv/lib/python3.12/site-packages/torch/amp/autocast_mode.py", line 527, in decorate_bwd
+    return bwd(*args, **kwargs)  # pyrefly: ignore [not-callable]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/fla-vanilla/fla/ops/gated_delta_rule/chunk.py", line 322, in backward
+    dq, dk, dv, db, dg, dh0, dA_log, ddt_bias = chunk_gated_delta_rule_bwd(
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/fla-vanilla/fla/ops/gated_delta_rule/chunk.py", line 214, in chunk_gated_delta_rule_bwd
+    dq, dk, dw, dg = chunk_bwd_dqkwg(
+                     ^^^^^^^^^^^^^^^^
+  File "/tmp/fla-vanilla/fla/ops/backends/__init__.py", line 182, in wrapper
+    result = impl(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/fla-vanilla/fla/ops/common/backends/tilelang/__init__.py", line 92, in chunk_bwd_dqkwg
+    return chunk_bwd_dqkwg_tilelang(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/fla-vanilla/fla/ops/common/backends/tilelang/chunk_bwd.py", line 320, in chunk_bwd_dqkwg_tilelang
+    kernel = _build_kernel(
+             ^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/__init__.py", line 440, in __call__
+    kernel = self.compile(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/__init__.py", line 375, in compile
+    kernel_result = compile(
+                    ^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/__init__.py", line 98, in compile
+    return cached(
+           ^^^^^^^
+  File "/tmp/tilelang-test/tilelang/cache/__init__.py", line 74, in cached
+    return _dispatch_map[execution_backend].cached(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/cache/kernel_cache.py", line 264, in cached
+    kernel = JITKernel(
+             ^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/kernel.py", line 137, in __init__
+    adapter = self._compile_and_create_adapter(func, out_idx)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/kernel.py", line 241, in _compile_and_create_adapter
+    artifact = tilelang.lower(
+               ^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/engine/lower.py", line 249, in lower
+    mod = LowerAndLegalize(mod, target)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/engine/phase.py", line 178, in LowerAndLegalize
+    mod = tilelang.transform.LayoutInference()(mod)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/3rdparty/tvm/python/tvm/ir/transform.py", line 167, in __call__
+    return _ffi_transform_api.RunPass(self, mod)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "python/tvm_ffi/cython/function.pxi", line 929, in tvm_ffi.core.Function.__call__
+  File "<unknown>", line 0, in tvm::transform::Pass::operator()(tvm::IRModule) const
+  File "<unknown>", line 0, in tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  File "<unknown>", line 0, in tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  File "<unknown>", line 0, in tvm::tl::LayoutInferencer::Substitute(tvm::tir::PrimFunc, bool)
+  File "<unknown>", line 0, in tvm::tl::BufferUseDefCollector::Run()
+  File "<unknown>", line 0, in tvm::tl::BufferUseDefCollector::RunInferStep(int, tvm::tl::InferLevel, bool, tvm::ffi::Map<tvm::tir::Buffer, tvm::tl::Layout, void>&, tvm::ffi::Map<tvm::tir::Buffer, tvm::tl::Layout, void> const&, std::deque<int, std::allocator<int> >&, std::vector<bool, std::allocator<bool> >&)
+  File "<unknown>", line 0, in tvm::tl::GemmPyNode::InferLayout(tvm::tl::LayoutInferArgs const&, tvm::tl::InferLevel) const
+  File "python/tvm_ffi/cython/function.pxi", line 1083, in tvm_ffi.core.tvm_ffi_callback
+  File "/tmp/tilelang-test/tilelang/tileop/gemm/__init__.py", line 23, in gemm_py_infer_layout
+    return gemm_py.infer_layout(target, thread_nums)
+
+  File "/tmp/tilelang-test/tilelang/tileop/gemm/__init__.py", line 116, in infer_layout
+    gemm_inst = self._select_gemm_instruction(thread_nums, target)
+
+  File "/tmp/tilelang-test/tilelang/tileop/gemm/__init__.py", line 143, in _select_gemm_instruction
+    return GemmInst(_ffi_api.GemmPyGemmInst(self, int(thread_nums), target))
+
+  File "python/tvm_ffi/cython/function.pxi", line 929, in tvm_ffi.core.Function.__call__
+  File "<unknown>", line 0, in tvm::tl::GemmPyNode::getGemmInst(int, tvm::Target) const
+  File "<unknown>", line 0, in tvm::runtime::detail::LogFatal::Entry::Finalize()
+tvm.error.InternalError: Check failed: (0) is false: Unsupported target for gemm: hip -keys=hip,gpu -max_num_threads=256 -max_shared_memory_per_block=65536 -max_threads_per_block=256 -mcpu=gfx1151 -mtriple=amdgcn-amd-amdhsa-hcc -thread_warp_size=64

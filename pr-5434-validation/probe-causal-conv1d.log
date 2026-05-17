@@ -1,0 +1,15 @@
+torch 2.11.0+rocm7.13.0a20260506  hip 7.13.26176  device 0: Radeon 8060S Graphics
+causal_conv1d: /tmp/causal-conv1d-test/causal_conv1d/__init__.py
+version: 1.6.2.post1
+causal_conv1d_fn:     causal_conv1d.causal_conv1d_interface
+causal_conv1d_update: causal_conv1d.causal_conv1d_interface
+
+--- causal_conv1d_fn(): batch=1 dim=512 seqlen=8192 kernel=4 bf16 ---
+shapes: x=(1, 512, 8192) w=(512, 4) b=(512,)
+FORWARD OK: out.shape=(1, 512, 8192) dtype=torch.bfloat16
+first 4 values: [-0.208984375, 3.09375, 1.296875, -0.1923828125]
+
+--- causal_conv1d_update(): batch=1 dim=512 kernel=4 bf16 ---
+UPDATE OK: out.shape=(1, 512) dtype=torch.bfloat16
+
+--- ALL CAUSAL_CONV1D PROBES SUCCEEDED ---

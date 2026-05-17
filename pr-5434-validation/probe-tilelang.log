@@ -1,0 +1,54 @@
+/tmp/tilelang-test/tvm_ffi/_optional_torch_c_dlpack.py:181: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+We recommend installing via `pip install torch-c-dlpack-ext`
+  warnings.warn(
+/tmp/tilelang-test/tvm_ffi/_optional_torch_c_dlpack.py:181: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+We recommend installing via `pip install torch-c-dlpack-ext`
+  warnings.warn(
+torch 2.11.0+rocm7.13.0a20260506  hip 7.13.26176  device 0: Radeon 8060S Graphics
+
+--- import apache-tvm-ffi ---
+tvm_ffi:    /tmp/tilelang-test/tvm_ffi/__init__.py
+version:    0.1.9
+
+--- import tilelang ---
+tilelang:   /tmp/tilelang-test/tilelang/__init__.py
+version:    0.1.8
+
+--- tilelang.target.determine_target() ---
+determined target: hip
+
+--- tilelang HIP / ROCm backend availability ---
+trying to JIT-compile a tiny add kernel for the current device...
+[19:43:16] /project/3rdparty/tvm/src/target/target_kind.cc:240: Warning: Unable to detect ROCm version, assuming >= 3.5
+Traceback (most recent call last):
+  File "/tmp/probe-tilelang.py", line 60, in <module>
+    jit_kernel = tilelang.compile(add_kernel)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/__init__.py", line 98, in compile
+    return cached(
+           ^^^^^^^
+  File "/tmp/tilelang-test/tilelang/cache/__init__.py", line 74, in cached
+    return _dispatch_map[execution_backend].cached(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/cache/kernel_cache.py", line 264, in cached
+    kernel = JITKernel(
+             ^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/kernel.py", line 137, in __init__
+    adapter = self._compile_and_create_adapter(func, out_idx)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/jit/kernel.py", line 241, in _compile_and_create_adapter
+    artifact = tilelang.lower(
+               ^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/engine/lower.py", line 257, in lower
+    codegen_mod = device_codegen(device_mod, target) if enable_device_compile else device_codegen_without_compile(device_mod, target)
+                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tilelang/engine/lower.py", line 197, in device_codegen_without_compile
+    device_mod = tvm.ffi.get_global_func("target.build.tilelang_hip_without_compile")(device_mod, target)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tilelang-test/tvm_ffi/registry.py", line 198, in get_global_func
+    return core._get_global_func(name, allow_missing)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "python/tvm_ffi/cython/function.pxi", line 1065, in tvm_ffi.core._get_global_func
+ValueError: Cannot find global function target.build.tilelang_hip_without_compile
+2026-05-16 19:43:16  [TileLang:tilelang.jit.kernel:INFO]: TileLang begins to compile kernel `add_kernel` with `out_idx=None`
+tilelang dispatch FAILED: ValueError: Cannot find global function target.build.tilelang_hip_without_compile

@@ -1,0 +1,30 @@
+cleared Triton cache: /home/auroraai/.triton/cache
+
+--- env ---
+torch: 2.11.0+rocm7.13.0a20260506  hip: 7.13.26176
+device 0: Radeon 8060S Graphics
+triton: 3.6.0
+
+--- fla provenance ---
+fla.__file__: /tmp/fla-vanilla/fla/__init__.py
+fla version (PyPI shim): 0.5.0
+fla-core version:        0.5.0
+
+--- import gated_delta_rule kernel (the Qwen3.5 GDN entry) ---
+chunk_gated_delta_rule:           fla.ops.gated_delta_rule.chunk
+fused_recurrent_gated_delta_rule: fla.ops.gated_delta_rule.fused_recurrent
+
+--- chunk_gated_delta_rule probe (bf16, B=1 T=256 H=4 K=64 V=64) ---
+shapes: q=(1, 256, 4, 64) k=(1, 256, 4, 64) v=(1, 256, 4, 64) g=(1, 256, 4) beta=(1, 256, 4)
+calling chunk_gated_delta_rule (this is where autotune fires)...
+FORWARD OK: out.shape=(1, 256, 4, 64) dtype=torch.bfloat16
+FORWARD OK: final_state.shape=(1, 4, 64, 64)
+first 4 values: [-0.240234375, -0.09619140625, 0.0211181640625, 0.10546875]
+
+--- backward probe (GDN gradient) ---
+BACKWARD OK: q.grad.shape=(1, 256, 4, 64)  q.grad has NaN: True
+
+--- fused_recurrent variant probe (smaller; tests step-mode) ---
+fused_recurrent OK: out.shape=(1, 256, 4, 64)
+
+--- ALL PROBES SUCCEEDED — vanilla 0.5.0 works on gfx1151 ---
