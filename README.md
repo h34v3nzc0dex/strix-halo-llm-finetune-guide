@@ -528,6 +528,42 @@ PATH=/opt/rocm-7.1.0/bin:$PATH cmake --build build --parallel $(nproc)
 
 ---
 
+## Step 6b — Inference settings for Qwen3.5 / Qwen3.6
+
+If you're serving the fine-tune (or any Qwen3.5/3.6 base model) via `llama-server` for chat or tool-call use, a few runtime settings beyond the build flags matter on this hardware. These are what we run in production:
+
+```ini
+# /etc/systemd/system/llama-server-qwen35.service (excerpt)
+ExecStart=/usr/local/bin/llama-server \
+    -m /path/to/your-qwen35.gguf \
+    -ngl 999 \
+    -c 32768 \
+    -fit off \
+    --no-mmap \
+    --reasoning-budget 0 \
+    --temp 1.0 \
+    --top-p 0.95 \
+    --top-k 20 \
+    --min-p 0.00 \
+    --host 0.0.0.0 \
+    --port 8080
+```
+
+Per-flag rationale:
+
+- **`--no-mmap`** is the gfx1151 gotcha — mmap-only loading triggers a ~30 min GPU page-table setup wall on the unified-memory path. Either `--no-mmap` *or* `--mmap --direct-io` together work; mmap alone hangs. Documented across multiple Strix Halo issues; not specific to llama.cpp.
+- **`--fit off`** disables llama-server's auto-fit (which also triggers the HSA null pointer bug on some ROCm 7.1.x configurations; we kept it off across the board).
+- **`--reasoning-budget 0`** disables the thinking block. **Strongly recommended** for tool-call workflows — Qwen3.5/3.6's native chat template emits tool calls inside the `<thinking>` block, and if the reasoning budget runs out mid-call the response stream looks empty to the client. Leave thinking on only for pure-chat-no-tools workloads where reasoning visibly helps.
+- **Sampling: `--temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.00`** is the unsloth-recommended set for Qwen3.5/3.6 with reasoning off. Their per-model sampling guidance is worth following — meaningfully better than llama.cpp's defaults for coherence on this family. See unsloth's [Qwen3.6 docs](https://docs.unsloth.ai/models/qwen3.6-how-to-run-and-fine-tune) for the per-mode (reasoning vs non-reasoning) recommendations.
+- **KV cache quantization (`--cache-type-k q4_0 --cache-type-v q4_0`)** is reported to give measurable memory-bandwidth gains at long context with minimal quality loss on Qwen3.5/3.6. We haven't benched it ourselves yet on this hardware (production is at the F16 cache default, 8k context where the bandwidth pressure is lower) — adding when we do. If you're running long-context (32k+) chat workloads, it's worth trying.
+
+For tool-call agents specifically (Continue, Codex CLI, Roo, OpenClaw, aichat, etc.), also note:
+
+- **Custom Jinja template required for Qwen3-Coder-Next.** The native template emits XML `<tool_call><function=...>...</function></tool_call>` which trips clients expecting Hermes-style JSON `{"name": ..., "arguments": ...}`. Swap via `--chat-template-file <your-hermes.jinja>`. Templates for Qwen3-Coder-Next + Nemotron-3-Super in Hermes format are floating around HuggingFace and the ggml-org/llama.cpp issue tracker.
+- **Disable thinking for tool workflows specifically.** Even on models where you want thinking for chat, route tool-call/agent workflows to a separate `llama-server` instance (or a separate role binding in your client config) with `--reasoning-budget 0`.
+
+---
+
 ## Training script — the contract
 
 This repo intentionally does **not** ship a training script — the one we used is domain-specific (Christmas-light-show effect tool-use) and shipping it would be misleading. Instead, here's the contract `train_orchestrator.sh` expects from whatever script you put at `scripts/train_qwen3_32b.py` (or rename the orchestrator's `TRAIN_SCRIPT_NAME` variable to point at yours).
