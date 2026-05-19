@@ -1,0 +1,178 @@
+
+  🦥 Unsloth Studio Installer
+  ────────────────────────────────────────────────────
+
+  platform       linux
+  deps           all system dependencies found
+                 preserving existing environment for rollback...
+                 previous environment preserved for rollback
+  venv           creating Python 3.13 virtual environment
+                 /home/auroraai/.unsloth/studio/unsloth_studio
+  venv           using environment
+                 /home/auroraai/.unsloth/studio/unsloth_studio
+
+  AMD Radeon + ROCm detected -- installing PyTorch wheels from repo.radeon.com
+
+                 installing PyTorch from Radeon repo (https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/)...
+                 installing bitsandbytes for AMD ROCm (pre-release, PR #1887)...
+                 installing unsloth (this may take a few minutes)...
+                 overlaying local repo (editable)...
+                 overlaying unsloth-zoo from git main...
+                 repairing ROCm torch (overwritten by dependency resolution)...
+  setup          running unsloth studio update...
+
+  🦥 Unsloth Studio Setup
+  ────────────────────────────────────────────────────
+                 local mode: overlaying /srv/aurora-ai/pr5303-test/unsloth (editable) + unsloth-zoo from git main
+  node           v24.15.0 | npm 11.12.1
+                 bun already installed (1.3.14)
+                 building frontend...
+                 using bun for package install (faster)
+  frontend       built
+  deps           [=-------------------]  1/13  pip bootstrap         deps           [===-----------------]  2/13  ROCm torch check       bnb pre-release unreachable; falling back to PyPI (4-bit decode will be broken on ROCm)
+  deps           [====----------------]  3/13  unsloth extras        deps           [======--------------]  4/13  extra codecs          deps           [=======-------------]  5/13  dependency overrides  deps           [=========-----------]  6/13  triton kernels        deps           [==========----------]  7/13  flash-attn            warning        No compatible flash-attn prebuilt wheel found
+  deps           [============--------]  8/13  studio deps           deps           [=============-------]  9/13  data designer deps    deps           [===============-----] 10/13  data designer         deps           [================----] 11/13  local plugin          deps           [==================--] 12/13  finalizing            deps           [====================] 13/13  ROCm torch (final)  
+   bnb pre-release unreachable; falling back to PyPI (4-bit decode will be broken on ROCm)
+  deps           installed
+  transformers   5.3.0 pre-installed
+  transformers   5.5.0 pre-installed
+                 installing prebuilt llama.cpp...
+  llama.cpp      prebuilt install failed (continuing)
+                 llama.cpp diagnostics (last 120 lines):
+   | [llama-prebuilt] no existing llama.cpp install detected at /home/auroraai/.unsloth/llama.cpp; performing fresh prebuilt install
+   | [llama-prebuilt] AMD GPU 'gfx1151' (gfx1151) -- trying lemonade-sdk ROCm prebuilt llama-b1272-ubuntu-rocm-gfx1151-x64.zip (works on any glibc Linux, not just Ubuntu)
+   | [llama-prebuilt] NOTE: lemonade-sdk/llamacpp-rocm releases are not covered by the Unsloth approved-hash manifest; download integrity relies on functional validation (llama-bench / llama-server smoke tests) after extraction. Set UNSLOTH_DISABLE_LEMONADE_ROCM=1 to skip lemonade and fall back to the upstream HIP build path.
+   | [llama-prebuilt] AMD GPU 'gfx1151' (gfx1151) -- trying lemonade-sdk ROCm prebuilt llama-b1272-ubuntu-rocm-gfx1151-x64.zip (works on any glibc Linux, not just Ubuntu)
+   | [llama-prebuilt] NOTE: lemonade-sdk/llamacpp-rocm releases are not covered by the Unsloth approved-hash manifest; download integrity relies on functional validation (llama-bench / llama-server smoke tests) after extraction. Set UNSLOTH_DISABLE_LEMONADE_ROCM=1 to skip lemonade and fall back to the upstream HIP build path.
+   | [llama-prebuilt] downloading tiny GGUF validation model
+   | Downloading stories260K.gguf:  88.5% (1.0 MiB/1.1 MiB) at 4.0 MiB/s
+   | Downloading stories260K.gguf: 100.0% (1.1 MiB/1.1 MiB) at 4.3 MiB/s
+   | [llama-prebuilt] selected llama-b1272-ubuntu-rocm-gfx1151-x64.zip (lemonade) from published release b9204 for Linux x86_64
+   | [llama-prebuilt] created install staging dir /home/auroraai/.unsloth/.staging/llama.cpp.staging-w6k1b9xy
+   | [llama-prebuilt] hydrating upstream llama.cpp source for b9204 into /home/auroraai/.unsloth/.staging/llama.cpp.staging-w6k1b9xy
+   | [llama-prebuilt] downloading llama.cpp source tree for b9204
+   | Downloading llama.cpp-source-b9204.tar.gz: 25.0 MiB downloaded at 7.1 MiB/s
+   | Downloading llama.cpp-source-b9204.tar.gz: 32.3 MiB downloaded at 7.3 MiB/s
+   | [llama-prebuilt] downloaded llama.cpp source tree for b9204 without a published sha256; relying on install validation
+   | [llama-prebuilt] overlaying prebuilt bundle llama-b1272-ubuntu-rocm-gfx1151-x64.zip into /home/auroraai/.unsloth/.staging/llama.cpp.staging-w6k1b9xy
+   | [llama-prebuilt] downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip from lemonade release
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:   0.2% (1.0 MiB/435.0 MiB) at 8.0 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:  25.1% (109.0 MiB/435.0 MiB) at 78.4 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:  50.1% (218.0 MiB/435.0 MiB) at 75.2 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:  75.2% (327.0 MiB/435.0 MiB) at 67.5 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip: 100.0% (435.0 MiB/435.0 MiB) at 68.7 MiB/s
+   | [llama-prebuilt] downloaded prebuilt archive llama-b1272-ubuntu-rocm-gfx1151-x64.zip without a published sha256; relying on install validation
+   | [llama-prebuilt] published release b9204 upstream_tag=b9204 failed; trying the next older published prebuilt (linux extracted binary preflight failed: llama-server: missing=librocm_kpack.so.0,librocm_sysdeps_elf.so.1,librocm_sysdeps_drm.so.2,librocm_sysdeps_drm_amdgpu.so.1,librocm_sysdeps_numa.so.1...)
+   | [llama-prebuilt] selected llama-b1272-ubuntu-rocm-gfx1151-x64.zip (lemonade) from published release b9190 for Linux x86_64
+   | [llama-prebuilt] created install staging dir /home/auroraai/.unsloth/.staging/llama.cpp.staging-pr74x65f
+   | [llama-prebuilt] hydrating upstream llama.cpp source for b9190 into /home/auroraai/.unsloth/.staging/llama.cpp.staging-pr74x65f
+   | [llama-prebuilt] downloading llama.cpp source tree for b9190
+   | Downloading llama.cpp-source-b9190.tar.gz: 25.0 MiB downloaded at 6.7 MiB/s
+   | Downloading llama.cpp-source-b9190.tar.gz: 32.3 MiB downloaded at 6.9 MiB/s
+   | [llama-prebuilt] downloaded llama.cpp source tree for b9190 without a published sha256; relying on install validation
+   | [llama-prebuilt] overlaying prebuilt bundle llama-b1272-ubuntu-rocm-gfx1151-x64.zip into /home/auroraai/.unsloth/.staging/llama.cpp.staging-pr74x65f
+   | [llama-prebuilt] downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip from lemonade release
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:   0.2% (1.0 MiB/435.0 MiB) at 8.0 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:  25.1% (109.0 MiB/435.0 MiB) at 173.1 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:  50.1% (218.0 MiB/435.0 MiB) at 208.9 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip:  75.2% (327.0 MiB/435.0 MiB) at 223.6 MiB/s
+   | Downloading llama-b1272-ubuntu-rocm-gfx1151-x64.zip: 100.0% (435.0 MiB/435.0 MiB) at 231.4 MiB/s
+   | [llama-prebuilt] downloaded prebuilt archive llama-b1272-ubuntu-rocm-gfx1151-x64.zip without a published sha256; relying on install validation
+   | [llama-prebuilt] prebuilt install path failed; falling back to source build
+   | [llama-prebuilt] prebuilt fallback reason: linux extracted binary preflight failed:
+   | llama-server: missing=librocm_kpack.so.0,librocm_sysdeps_elf.so.1,librocm_sysdeps_drm.so.2,librocm_sysdeps_drm_amdgpu.so.1,librocm_sysdeps_numa.so.1 ld_library_path=/home/auroraai/.unsloth/.staging/llama.cpp.staging-pr74x65f/build/bin,/home/auroraai/.unsloth/.staging/llama.cpp.staging-pr74x65f
+   | llama-quantize: missing=librocm_kpack.so.0,librocm_sysdeps_elf.so.1,librocm_sysdeps_drm.so.2,librocm_sysdeps_drm_amdgpu.so.1,librocm_sysdeps_numa.so.1 ld_library_path=/home/auroraai/.unsloth/.staging/llama.cpp.staging-pr74x65f/build/bin,/home/auroraai/.unsloth/.staging/llama.cpp.staging-pr74x65f
+   | platform=Linux machine=x86_64
+   | driver_cuda_version=None
+   | compute_caps=unknown
+   | cuda_visible_devices=unset
+   | has_physical_nvidia=False
+   | has_usable_nvidia=False
+   | chosen_asset=llama-b1272-ubuntu-rocm-gfx1151-x64.zip
+   | asset_source=lemonade
+                 falling back to source build
+                 building (ROCm, gfx1151)...
+  error          cmake llama.cpp failed (exit code 1)
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMAKE_BUILD_TYPE=Release
+-- Found Git: /usr/bin/git (found version "2.43.0") 
+-- The ASM compiler identification is GNU
+-- Found assembler: /usr/bin/cc
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Warning: ccache not found - consider installing it for faster compilation or disable this warning with GGML_CCACHE=OFF
+-- CMAKE_SYSTEM_PROCESSOR: x86_64
+-- GGML_SYSTEM_ARCH: x86
+-- Including CPU backend
+-- Found OpenMP_C: -fopenmp (found version "4.5") 
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+-- x86 detected
+-- Adding CPU backend variant ggml-cpu: -march=native 
+-- The HIP compiler identification is unknown
+-- Detecting HIP compiler ABI info
+-- Detecting HIP compiler ABI info - failed
+-- Check for working HIP compiler: /opt/rocm-7.1.0/lib/llvm/bin/clang
+-- Check for working HIP compiler: /opt/rocm-7.1.0/lib/llvm/bin/clang - broken
+CMake Error at /usr/share/cmake-3.28/Modules/CMakeTestHIPCompiler.cmake:73 (message):
+  The HIP compiler
+
+    "/opt/rocm-7.1.0/lib/llvm/bin/clang"
+
+  is not able to compile a simple test program.
+
+  It fails with the following output:
+
+    Change Dir: '/home/auroraai/.unsloth/llama.cpp.build.100513/build/CMakeFiles/CMakeScratch/TryCompile-x4Zg9r'
+    
+    Run Build Command(s): /usr/bin/ninja -v cmTC_d50ae
+    [1/2] /opt/rocm-7.1.0/lib/llvm/bin/clang    --offload-arch=gfx1151 -o CMakeFiles/cmTC_d50ae.dir/testHIPCompiler.hip.o  -c /home/auroraai/.unsloth/llama.cpp.build.100513/build/CMakeFiles/CMakeScratch/TryCompile-x4Zg9r/testHIPCompiler.hip
+    FAILED: CMakeFiles/cmTC_d50ae.dir/testHIPCompiler.hip.o 
+    /opt/rocm-7.1.0/lib/llvm/bin/clang    --offload-arch=gfx1151 -o CMakeFiles/cmTC_d50ae.dir/testHIPCompiler.hip.o  -c /home/auroraai/.unsloth/llama.cpp.build.100513/build/CMakeFiles/CMakeScratch/TryCompile-x4Zg9r/testHIPCompiler.hip
+    In file included from <built-in>:1:
+    In file included from /opt/rocm-7.1.0/lib/llvm/lib/clang/20/include/__clang_hip_runtime_wrapper.h:111:
+    /opt/rocm-7.1.0/lib/llvm/lib/clang/20/include/cuda_wrappers/cmath:30:2: error: "Could not find standard C++ header 'cmath'. Add -v to your compilation command to check the include paths being searched. You may need to install the appropriate standard C++ library package corresponding to the search path."
+       30 | #error "Could not find standard C++ header 'cmath'. Add -v to your compilation command to check the include paths being searched. You may need to install the appropriate standard C++ library package corresponding to the search path."
+          |  ^
+    In file included from <built-in>:1:
+    /opt/rocm-7.1.0/lib/llvm/lib/clang/20/include/__clang_hip_runtime_wrapper.h:112:10: fatal error: 'cstdlib' file not found
+      112 | #include <cstdlib>
+          |          ^~~~~~~~~
+    2 errors generated when compiling for gfx1151.
+    ninja: build stopped: subcommand failed.
+    
+    
+
+  
+
+  CMake will not be able to correctly generate this project.
+Call Stack (most recent call first):
+  ggml/src/ggml-hip/CMakeLists.txt:43 (enable_language)
+
+
+-- Configuring incomplete, errors occurred!
+  llama.cpp      build failed
+  ────────────────────────────────────────────────────
+  Unsloth Studio Installed (limited: llama.cpp unavailable)
+  ────────────────────────────────────────────────────
+  launch         unsloth studio -p 8888
+                 (add -H 0.0.0.0 to allow network / cloud access)
+
+                 Created Unsloth Studio shortcut
+
+  error          studio setup failed (exit code 1)
+
+                 restoring previous environment after failed install...
+                 restored previous environment
