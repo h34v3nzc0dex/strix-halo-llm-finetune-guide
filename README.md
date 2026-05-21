@@ -319,7 +319,7 @@ The sudoers drop-in lets your training user run `gpu-defrag-mem` with `sudo -n` 
 sudo install -o root -g root -m 0755 scripts/gpu-defrag-mem /usr/local/bin/gpu-defrag-mem
 
 # Edit the sudoers file: replace <user> with your actual username
-# (e.g. paul, daisy, whatever `whoami` returns)
+# (whatever `whoami` returns)
 sed "s/<user>/$(whoami)/" configs/gpu-defrag-mem.sudoers \
     | sudo tee /etc/sudoers.d/gpu-defrag-mem > /dev/null
 sudo chmod 0440 /etc/sudoers.d/gpu-defrag-mem
@@ -812,6 +812,59 @@ Target: 448 steps total. Step time: ~11 min. Total wall-clock: ~4 days. GPU temp
 
 ---
 
+## Benchmarks & model selection
+
+Fine-tuning is one workload; running the result (or any model) is another. These are measured numbers on this box — Radeon 8060S / gfx1151 / 128 GiB unified, ROCm 7.13 nightly — not vendor claims. Full logs and repro commands are in [`qwen36-bench/`](qwen36-bench/) and [`cublas-hipblaslt-sweep/`](cublas-hipblaslt-sweep/).
+
+### Inference throughput — what to expect
+
+| Model | Quant | tg (tok/s) | Notes |
+|---|---|---|---|
+| Qwen3.6-35B-A3B | Q4_K_M | **~50** | MoE, 3 B active params/token — fastest interactive option |
+| Qwen3.6-27B-MTP | Q4_K_M | ~12 raw | ~20 with MTP speculative decoding if your llama.cpp build wires the draft path |
+| Qwen3.5-27B (dense) | Q8_0 | ~7.5 | Full-precision dense — slowest, highest fidelity |
+
+The spread is workload, not silicon. Decomposed:
+
+| Change | Speedup |
+|---|---|
+| Q8 → Q4 (halves per-token memory bandwidth) | ~1.6× |
+| 27 B dense → 35 B-A3B MoE (cuts compute per token to 3 B active) | ~4× |
+| dense → MTP + speculative decoding | ~1.67× |
+
+**Picking a model:** for an interactive assistant, a MoE-A3B model at Q4 wins outright — you pay compute for only the active experts. For maximum fidelity at a fixed memory budget, a dense model at Q8. MTP buys a speculative-decoding multiplier on top, *if* your llama.cpp build has the draft path enabled for gfx1151 (not all prebuilts do).
+
+### `GGML_CUDA_FORCE_CUBLAS` — bench shape decides
+
+A common r/StrixHalo tip is to build llama.cpp with `-DGGML_CUDA_FORCE_CUBLAS=ON` and run with `ROCBLAS_USE_HIPBLASLT=1`. We swept it on Qwen3.5-27B Q8 — it is **not** a free win; the sign of the effect flips with prompt-batch shape:
+
+| Bench shape | CUBLAS=ON effect |
+|---|---|
+| `pp2048` (large prompt, FA on) | **+7%** at depth 0, decaying to flat by ~8 k context |
+| `pp64` (small prompt) | **~3.6× slowdown** — forcing the rocBLAS GEMM path compiles out the MMQ kernels that win at small shapes |
+
+If your real workload is large-prompt / batched (typical for fine-tune eval and RAG), the flag helps modestly. If it's short interactive prompts, it hurts badly. Measure your own shape before adopting it. Raw sweep: [`cublas-hipblaslt-sweep/`](cublas-hipblaslt-sweep/).
+
+---
+
+## Troubleshooting
+
+The failure modes that cost us the most time, indexed. Each links to the step with the full fix.
+
+| Symptom | Cause | Fix | Where |
+|---|---|---|---|
+| Kernel `.deb` install half-configures / `run-parts` errors | Mainline kernel `.deb`s have a double-directory `run-parts` bug across image/modules/headers maintainer scripts | Run `scripts/fix-kernel-run-parts.py` on the `.deb`s before installing — rewrites the trigger scripts to `if [ -d X ]; then … fi` form | [Step 1](#step-1--kernel-61914-mainline) |
+| `'cstdlib' file not found` / `'cmath'` during a HIP build | ROCm 7.1's clang-20 picks the gcc-14 runtime dir, which lacks the C++ headers, on Ubuntu 24.04 | Pass `--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13` — via `CMAKE_HIP_FLAGS` (cmake) or `HIPCC_COMPILE_FLAGS_APPEND` (pip) | [Step 5](#step-5--bitsandbytes-from-source-for-rocm), [Step 6](#step-6--llamacpp-hip-build-for-inference) |
+| `import bitsandbytes` loads the PyPI build, not your source build | Namespace-package shadow — the editable install doesn't win on `sys.path` | See the namespace-shadow fix; verify `bitsandbytes.__file__` resolves into your source tree | [Step 5](#step-5--bitsandbytes-from-source-for-rocm) |
+| System hard-freezes mid-training, needs a power-off | VRAM/unified-pool exhaustion hangs the HIP driver instead of raising `OutOfMemoryError` | `torch.cuda.set_per_process_memory_fraction(0.80)` — on a 128 GB unified APU, `0.80` (≈102 GB) leaves the host enough; `0.90` starves it | [Training contract](#training-script--the-contract) |
+| `llama.cpp` model load hangs ~30 min at GPU page-table setup | mmap-only load on gfx1151 triggers a slow page-table walk | Use `--no-mmap`, or mmap **and** `direct_io` together — never mmap alone | [Step 6](#step-6--llamacpp-hip-build-for-inference) |
+| Random crashes mid-training, no obvious cause | `/srv` permissions silently regress off `755` | Install the `/srv` perm watchdog cron (defense in depth — the root cause is still unpinned) | [Step 2](#step-2--system-tuning) |
+| FLA kernels error or return wrong results after an FLA version change | Stale Triton autotune cache — patched FLA produces different kernel shapes | `rm -rf ~/.triton/cache` after any FLA change | [Step 4](#step-4--flash-linear-attention-patched-source) |
+| `pip install torch` pulls CUDA wheels on an AMD box | Default PyPI index serves CUDA builds | Always install torch from the gfx1151 ROCm nightly index | [Step 3](#step-3--pytorch-nightly--rocm) |
+| Eval storms the box — every checkpoint pegs all cores for 5–10 min | The HF eval path triggers a TLB-shootdown IPI storm on no-`INVLPGB` Strix Halo | Use the `llama-perplexity` eval path instead of the HF path | [Step 7b](#step-7b--storm-free-eval-via-llama-perplexity) |
+
+---
+
 ## What's still unsolved
 
 We're not done; this guide is a snapshot, not a victory lap.
@@ -851,16 +904,47 @@ strix-halo-llm-finetune-guide/
 │   ├── README.md                          # how to apply + numerical verification
 │   └── convert_lora_to_gguf-qwen35-       # Qwen3.5 GQA V-head reorder LoRA fix
 │       vhead-reorder.patch                #   for llama.cpp's convert_lora_to_gguf.py (§7c)
-└── examples/
-    └── training_script_skeleton.py        # minimal SFTTrainer script that
-                                           # satisfies the orchestrator contract
+├── examples/
+│   └── training_script_skeleton.py        # minimal SFTTrainer script that
+│                                          # satisfies the orchestrator contract
+│
+│   # ── Validation work — each dir answers one question, on real gfx1151 ──
+├── cublas-hipblaslt-sweep/                # Does -DGGML_CUDA_FORCE_CUBLAS help?
+│                                          #   (answer: depends on bench shape — §Benchmarks)
+├── qwen36-bench/                          # Qwen3.6 35B-A3B / 27B-MTP throughput
+│                                          #   on gfx1151 — the §Benchmarks numbers
+├── pr-5301-oom-guard/                     # Validates PR #5301's OOM-guard GPU
+│                                          #   classifier — caught a Strix Halo misdetect
+├── pr-5303-validation/                    # Validates PR #5303 lemonade prebuilts —
+│                                          #   caught a missing-runtime-lib install bug
+├── pr-5434-validation/                    # Validates PR #5434 FLA + tilelang —
+│                                          #   caught the tilelang HIP regression
+└── pr-5517-validation/                    # Test run behind our merged PR #5517
+                                           #   (--gcc-install-dir HIP build fix)
 ```
+
+See [Upstream contributions](#upstream-contributions) for what each PR fixed.
+
+---
+
+## Upstream contributions
+
+This guide isn't a static writeup — its gotchas get fed back to the projects that caused them. The validation dirs above are the evidence trail for work upstreamed to Unsloth:
+
+| PR | Status | What it fixed | Validation |
+|---|---|---|---|
+| [unsloth#5517](https://github.com/unslothai/unsloth/pull/5517) | **merged** | Injects `--gcc-install-dir` into HIP source builds so Unsloth Studio installs on Ubuntu 24.04 (the `'cstdlib' not found` failure) | [`pr-5517-validation/`](pr-5517-validation/) |
+| [unsloth#5434](https://github.com/unslothai/unsloth/pull/5434) | **merged** | Auto-installs `flash-linear-attention` + `tilelang` for the Qwen3.5 family. Our gfx1151 testing found `tilelang` is a hard regression on AMD; a HIP gate was added in response | [`pr-5434-validation/`](pr-5434-validation/) |
+| [unsloth#5301](https://github.com/unslothai/unsloth/pull/5301) | open | ROCm unified-memory detection for Strix Halo. We hardware-verified the detection fix, and caught its OOM guard misclassifying the Radeon 8060S as a discrete card | [`pr-5301-oom-guard/`](pr-5301-oom-guard/) |
+| [unsloth#5303](https://github.com/unslothai/unsloth/pull/5303) | open | Per-GPU lemonade-sdk llama.cpp prebuilts for ROCm hosts. Our end-to-end install test caught the runtime overlay omitting `librocm_kpack` / `librocm_sysdeps_*` libs | [`pr-5303-validation/`](pr-5303-validation/) |
+
+Every entry here started as a real failure on a real run on the hardware this guide documents.
 
 ---
 
 ## Credits
 
-Built and tested on a Corsair AI Workstation 300 by **Paul Durkin** ([@h34v3nzc0dex](https://github.com/h34v3nzc0dex)) with the assistance of Claude (Anthropic). Every patch in this repo was discovered by hitting a real failure on a real run and digging until we understood the root cause.
+Built and tested on a Corsair AI Workstation 300 by [@h34v3nzc0dex](https://github.com/h34v3nzc0dex) with the assistance of Claude (Anthropic). Every patch in this repo was discovered by hitting a real failure on a real run and digging until we understood the root cause.
 
 The community resources that got us most of the way:
 
