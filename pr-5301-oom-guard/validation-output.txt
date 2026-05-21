@@ -1,0 +1,16 @@
+device name (torch)        : 'Radeon 8060S Graphics'
+gcnArchName                : 'gfx1151'
+torch total_memory         : 128.0 GiB  (unified pool — = system RAM)
+
+PR #5301 classifier result : _is_unified=False  -> fraction=0.9
+  -> GPU allocator cap     : 115.2 GiB
+  -> left for OS/page-cache: 12.8 GiB
+
+VERDICT: MISCLASSIFIED. Radeon 8060S is a Strix Halo unified APU but the
+         digit+M regex misses the 'S' suffix, so the guard applies 0.90.
+        0.90 of a 128 GiB unified pool leaves only 12.8 GiB for the
+         entire OS — the host-starvation freeze the guard exists to prevent.
+
+proposed gcnArchName fix   : arch_base='gfx1151' -> _is_unified=True -> fraction=0.8
+  -> GPU allocator cap     : 102.4 GiB   (correct)
+  -> set_per_process_memory_fraction(0.8) accepted on gfx1151
