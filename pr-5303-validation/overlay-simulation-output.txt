@@ -1,0 +1,5 @@
+c41e20db patterns (verbatim)         -> llama-server unresolved: 2
+    libclang-cpp.so.23.0git => not found
+    libLLVM.so.23.0git => not found
++ libLLVM.so* + libclang-cpp.so*     -> llama-server unresolved: 0
+robust  lib*.so*  glob               -> llama-server unresolved: 0

@@ -2,10 +2,11 @@
 
 PR under test: [unslothai/unsloth#5303](https://github.com/unslothai/unsloth/pull/5303) — *feat(studio): use lemonade-sdk/llamacpp-rocm per-GPU prebuilts for ROCm hosts*
 
-Two test passes documented here:
+Three test passes documented here:
 
 1. **2026-05-18 — manual asset-resolution + bench parity** at HEAD `39cf5d6`. Asset URL pattern works for gfx1151; bundle binaries run cleanly when `LD_LIBRARY_PATH` is set manually; bench parity vs hand-built reference. [Original PR comment](https://github.com/unslothai/unsloth/pull/5303#issuecomment-4485112930).
-2. **2026-05-19 — full `./install.sh --local` end-to-end** at HEAD `76fe0912` (which includes Daniel's runtime-overlay fix in `748d59d4`). Install **fails** on real hardware — runtime patterns still miss two lib families. Patch validated end-to-end. [Follow-up PR comment](https://github.com/unslothai/unsloth/pull/5303#issuecomment-4487275873).
+2. **2026-05-19 — full `./install.sh --local` end-to-end** at HEAD `76fe0912`. Install **fails** — runtime patterns miss the `librocm_kpack` / `librocm_sysdeps_*` family. 3-line patch proposed. [Follow-up PR comment](https://github.com/unslothai/unsloth/pull/5303#issuecomment-4487275873).
+3. **2026-05-21 — re-test at `c41e20db`** after the patch from Pass 2 was adopted. That family resolves; preflight now fails one layer deeper on `libLLVM` / `libclang-cpp`. Recommend dropping the allowlist for `lib*.so*`. See Pass 3 below.
 
 ## Test rig (both passes)
 
@@ -118,6 +119,38 @@ Statistically identical. Full output in `bench-after-manual-full-stage.log`.
 So the only blocker between current `76fe0912` and a working install on gfx1151 is the patterns gap — the lemonade bundle itself runs at performance parity with a hand-tuned source build.
 
 ---
+
+## Pass 3 — 2026-05-21 — re-test at `c41e20db` after the patterns fix
+
+Leo adopted the 3-line patch from Pass 2 (`libamd_comgr.so*`, `librocm_kpack.so*`, `librocm_sysdeps_*.so*`). Re-ran `./install.sh --local` against `c41e20db`.
+
+That family resolves now — but the prebuilt preflight fails one transitive layer deeper:
+
+```
+prebuilt fallback reason: linux extracted binary preflight failed:
+llama-server: missing=libclang-cpp.so.23.0git,libLLVM.so.23.0git
+```
+
+`libamd_comgr.so.3` — which `c41e20db` correctly started overlaying — is itself built on LLVM and lists `libLLVM.so.23.0git` + `libclang-cpp.so.23.0git` as direct `NEEDED` entries (see `ldd-libamd_comgr.txt`). Both are in the bundle (130 MB + 89 MB); neither is matched by `runtime_patterns_for_choice`. Overlaying comgr without its LLVM backing just moves the gap down a level.
+
+`overlay-simulation.py` copies only the files matching the verbatim `c41e20db` pattern list into a staging dir, then `ldd`s `llama-server` (`overlay-simulation-output.txt`):
+
+```
+c41e20db patterns (verbatim)      -> llama-server unresolved: 2  (libclang-cpp, libLLVM)
++ libLLVM.so* + libclang-cpp.so*  -> llama-server unresolved: 0
+robust  lib*.so*  glob            -> llama-server unresolved: 0
+```
+
+### Recommended fix — drop the AMD allowlist for `linux-rocm`
+
+This is the second transitive-dep layer (first `librocm_*`, now `libLLVM`/`libclang-cpp`). The lemonade bundle is self-contained by design — every `.so` in it is needed by something in the bundle — so an explicit allowlist will keep missing layers. Overlay `lib*.so*` instead:
+
+```python
+if choice.install_kind == "linux-rocm":
+    patterns = ["llama-server", "llama-quantize", "lib*.so*"]
+```
+
+Safe for the upstream ggml-org tarball path too: that tarball links system `/opt/rocm` and ships only `libllama` / `libggml*`, so `lib*.so*` matches the same set there as the current explicit list.
 
 ## Reproducing
 

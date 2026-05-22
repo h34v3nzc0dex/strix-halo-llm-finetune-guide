@@ -44,9 +44,32 @@ TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1 python3 validate-oom-guard.py
 
 `validate-oom-guard.py` runs the PR's classifier logic verbatim against whatever GPU `torch` sees, prints the fraction it would pick, and shows the `gcnArchName`-based fix side by side. No Unsloth install required — just a ROCm `torch`.
 
+## Re-validation — fix landed at `9393fffe`
+
+Leo adopted the `gcnArchName` suggestion. At PR head `9393fffe` the classifier is (`worker.py:2291-2295`):
+
+```python
+_gcn_arch = (getattr(_props, "gcnArchName", "") or "").split(":")[0]
+_is_unified = _gcn_arch in {"gfx1150", "gfx1151"}
+_mem_fraction = 0.80 if _is_unified else 0.90
+```
+
+`revalidate-9393fffe.py` runs that block verbatim on the gfx1151 box. Result (`revalidation-output-9393fffe.txt`):
+
+```
+gcnArchName (flag-stripped): 'gfx1151'
+classifier @ 9393fffe      : _is_unified=True  -> fraction=0.80
+  -> GPU allocator cap     : 102.4 GiB
+  -> left for OS/page-cache: 25.6 GiB
+```
+
+Same box that returned `_is_unified=False → 0.90` under the `32457939` name-regex now returns `True → 0.80`. **Fixed.**
+
 ## Files
 
 | File | What it is |
 |---|---|
-| `validate-oom-guard.py` | Reproduction script — runs the PR classifier verbatim + the proposed fix |
-| `validation-output.txt` | Captured run on Radeon 8060S / gfx1151 / 128 GiB unified |
+| `validate-oom-guard.py` | Original reproduction — runs the `32457939` name-regex classifier + the proposed fix |
+| `validation-output.txt` | Captured run showing the `32457939` misclassification |
+| `revalidate-9393fffe.py` | Re-validation — runs the merged `9393fffe` `gcnArchName` classifier verbatim |
+| `revalidation-output-9393fffe.txt` | Captured run confirming the fix on gfx1151 |
