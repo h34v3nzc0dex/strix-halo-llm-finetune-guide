@@ -1,0 +1,14 @@
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  0 |    0 |           pp512 |        577.66 ± 4.42 |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  0 |    0 |           tg128 |         35.84 ± 0.03 |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  1 |    0 |           pp512 |        565.62 ± 6.89 |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  1 |    0 |           tg128 |         35.87 ± 0.02 |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  0 |    1 |           pp512 |        562.67 ± 6.32 |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  0 |    1 |           tg128 |         36.49 ± 0.02 |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  1 |    1 |           pp512 |        563.85 ± 8.78 |
+| qwen3next 80B.A3B Q5_K - Medium |  55.45 GiB |    79.67 B | ROCm       |  99 |  1 |    1 |           tg128 |         35.94 ± 1.50 |
+
+build: 1acee6bf8 (9293)
