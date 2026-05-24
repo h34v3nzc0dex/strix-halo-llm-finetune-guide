@@ -528,6 +528,10 @@ PATH=/opt/rocm-7.1.0/bin:$PATH cmake --build build --parallel $(nproc)
 
 **`GGML_HIP_ROCWMMA_FATTN=OFF` is intentional** despite being the AMD-recommended setting for RDNA 3.5. On gfx1151 specifically, the rocwmma flash-attention path is dramatically slower than llama.cpp's runtime FA at any non-trivial context depth — about **2.4× slower on prefill at 8k context** on both dense Qwen3.5-27B and MoE Qwen3.6-A3B. TG is unaffected (memory-bandwidth-bound). Hardware-verified A/B with numbers + reproduction scripts in [`rocwmma-fattn-sweep/`](rocwmma-fattn-sweep/). Earlier versions of this guide recommended `ON`; that was wrong and is now corrected.
 
+**Minimum build for `--spec-type draft-mtp` GPU dispatch: b9180+.** Older builds (we tried b1270 via lemonade's prebuilt) will accept the `--spec-type draft-mtp` flag without complaint but never dispatch the draft model to the GPU — the process pegs a CPU core at 0% GPU and never makes progress. Symptom is silent. **And use `llama-server`, not `llama-cli`** for the speculation path; we burned hours on this and the `llama-cli` path doesn't wire the draft dispatcher the same way. Settings shown in §6b below.
+
+**Build in the directory you intend to keep it in.** cmake bakes the absolute `build/bin` path into the binary's `RUNPATH`, so if you build in `/tmp/llama.cpp-test/` and then move the tree to `/srv/aurora-ai/llama.cpp/`, the resulting binary will fail to find its shared libraries (`libllama-server-impl.so` etc.) on launch. Reconfigure + rebuild in the final location, or use `patchelf --set-rpath`. We hit this swapping our own production build from a staging dir.
+
 ---
 
 ## Step 6b — Inference settings for Qwen3.5 / Qwen3.6
@@ -563,6 +567,39 @@ For tool-call agents specifically (Continue, Codex CLI, Roo, OpenClaw, aichat, e
 
 - **Custom Jinja template required for Qwen3-Coder-Next.** The native template emits XML `<tool_call><function=...>...</function></tool_call>` which trips clients expecting Hermes-style JSON `{"name": ..., "arguments": ...}`. Swap via `--chat-template-file <your-hermes.jinja>`. Templates for Qwen3-Coder-Next + Nemotron-3-Super in Hermes format are floating around HuggingFace and the ggml-org/llama.cpp issue tracker.
 - **Disable thinking for tool workflows specifically.** Even on models where you want thinking for chat, route tool-call/agent workflows to a separate `llama-server` instance (or a separate role binding in your client config) with `--reasoning-budget 0`.
+
+### Speculative decoding with Qwen3.6-MTP (~1.6× decode speedup on gfx1151)
+
+The Qwen3.6-MTP family bakes Multi-Token Prediction draft heads directly into the GGUF, so you don't need a separate draft model file — `--spec-type draft-mtp` will create the draft context against the target model. On gfx1151 with `llama.cpp ≥ b9180`, served via `llama-server` (the wiring on `llama-cli` is broken), the following stack works cleanly:
+
+```
+--spec-type draft-mtp --spec-draft-n-max 3 \
+--spec-type ngram-map-k4v --spec-ngram-map-k4v-size-n 16 --spec-ngram-map-k4v-size-m 24 --spec-ngram-map-k4v-min-hits 2
+```
+
+`--spec-type` is stackable in recent builds — the line above stacks MTP draft prediction with an ngram-map-k4v lookup table. Both run alongside each other.
+
+On startup the server logs will confirm GPU dispatch — look for:
+
+```
+creating MTP draft context against the target model
+common_speculative_impl_draft_mtp: gpu_layers=-1, backend_sampling=1
+```
+
+If `gpu_layers` is 0 or unset, you're back on the CPU-pegging path; check your build is `b9180+` and you're invoking via `llama-server`, not `llama-cli`.
+
+Measured on this box (Radeon 8060S / gfx1151 / ROCm 7.1.0 + nightly HSA overlay, Qwen3.6-27B-MTP-Q4_K_M, default sampling):
+
+| Prompt | n_predict | tok/s |
+|---|---|---|
+| short coding task | 256 | 20.33 |
+| short technical | 256 | 19.06 |
+| haiku | 128 | 19.13 |
+| 500-word essay | 512 | 16.69 |
+
+Mean ~19 tok/s vs ~12 tok/s baseline without spec (the qwen36-bench `tg64` raw number) = **~1.58× speedup**. Credit to [u/kant12](https://reddit.com/r/StrixHalo) for the spec-stack config and the b9180+ build floor.
+
+One harmless warning shows up at model load: `device 'ROCm0' does not have support for op TOP_K needed for sampler 'top-k'`. The top-k sampler falls back to CPU — no measurable throughput hit.
 
 ---
 
@@ -823,7 +860,7 @@ Fine-tuning is one workload; running the result (or any model) is another. These
 | Model | Quant | tg (tok/s) | Notes |
 |---|---|---|---|
 | Qwen3.6-35B-A3B | Q4_K_M | **~50** | MoE, 3 B active params/token — fastest interactive option |
-| Qwen3.6-27B-MTP | Q4_K_M | ~12 raw | ~20 with MTP speculative decoding if your llama.cpp build wires the draft path |
+| Qwen3.6-27B-MTP | Q4_K_M | ~12 raw / **~19 with spec** | bare-bench `tg64` is ~12 t/s; with the MTP+ngram-map-k4v spec stack via `llama-server` on `b9180+` (see §6b for the exact config) we measured a mean of ~19 t/s over 4 samples = ~1.58× speedup. Older builds or `llama-cli` will silently never dispatch the draft to the GPU. |
 | Qwen3.5-27B (dense) | Q8_0 | ~7.5 | Full-precision dense — slowest, highest fidelity |
 
 The spread is workload, not silicon. Decomposed:
@@ -879,6 +916,8 @@ The failure modes that cost us the most time, indexed. Each links to the step wi
 | FLA kernels error or return wrong results after an FLA version change | Stale Triton autotune cache — patched FLA produces different kernel shapes | `rm -rf ~/.triton/cache` after any FLA change | [Step 4](#step-4--flash-linear-attention-patched-source) |
 | `pip install torch` pulls CUDA wheels on an AMD box | Default PyPI index serves CUDA builds | Always install torch from the gfx1151 ROCm nightly index | [Step 3](#step-3--pytorch-nightly--rocm) |
 | Eval storms the box — every checkpoint pegs all cores for 5–10 min | The HF eval path triggers a TLB-shootdown IPI storm on no-`INVLPGB` Strix Halo | Use the `llama-perplexity` eval path instead of the HF path | [Step 7b](#step-7b--storm-free-eval-via-llama-perplexity) |
+| `--spec-type draft-mtp` pegs a CPU core, never dispatches to GPU | Either build is older than `b9180` (the GPU draft-mtp dispatch isn't wired) OR you're using `llama-cli` instead of `llama-server` | Build llama.cpp at `b9180+`, invoke via `llama-server`. Confirm server logs show `gpu_layers=-1, backend_sampling=1`. | [Step 6b](#speculative-decoding-with-qwen36-mtp-16-decode-speedup-on-gfx1151) |
+| `llama-server` fails to start after you moved the build tree | cmake bakes the build-dir absolute path into the binary's `RUNPATH`; moving the tree leaves the binary pointing at a path that no longer exists | Rebuild in the final location (cleanest), or `patchelf --set-rpath <new path>` on the binaries + shared libs | [Step 6](#step-6--llamacpp-hip-build-for-inference) |
 
 ---
 
