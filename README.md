@@ -515,7 +515,7 @@ PATH=/opt/rocm-7.1.0/bin:$PATH \
 cmake -S . -B build \
   -DCMAKE_BUILD_TYPE=Release \
   -DGGML_HIP=ON \
-  -DGGML_HIP_ROCWMMA_FATTN=ON \
+  -DGGML_HIP_ROCWMMA_FATTN=OFF \
   -DGGML_HIP_GRAPHS=ON \
   -DGGML_HIP_MMQ_MFMA=ON \
   -DGGML_HIP_NO_VMM=ON \
@@ -525,6 +525,8 @@ PATH=/opt/rocm-7.1.0/bin:$PATH cmake --build build --parallel $(nproc)
 ```
 
 `GGML_HIP_GRAPHS=ON` is now upstream default (b867+) but explicitly enabling doesn't hurt.
+
+**`GGML_HIP_ROCWMMA_FATTN=OFF` is intentional** despite being the AMD-recommended setting for RDNA 3.5. On gfx1151 specifically, the rocwmma flash-attention path is dramatically slower than llama.cpp's runtime FA at any non-trivial context depth — about **2.4× slower on prefill at 8k context** on both dense Qwen3.5-27B and MoE Qwen3.6-A3B. TG is unaffected (memory-bandwidth-bound). Hardware-verified A/B with numbers + reproduction scripts in [`rocwmma-fattn-sweep/`](rocwmma-fattn-sweep/). Earlier versions of this guide recommended `ON`; that was wrong and is now corrected.
 
 ---
 
@@ -844,6 +846,21 @@ A common r/StrixHalo tip is to build llama.cpp with `-DGGML_CUDA_FORCE_CUBLAS=ON
 | `pp64` (small prompt) | **~3.6× slowdown** — forcing the rocBLAS GEMM path compiles out the MMQ kernels that win at small shapes |
 
 If your real workload is large-prompt / batched (typical for fine-tune eval and RAG), the flag helps modestly. If it's short interactive prompts, it hurts badly. Measure your own shape before adopting it. Raw sweep: [`cublas-hipblaslt-sweep/`](cublas-hipblaslt-sweep/).
+
+### `GGML_HIP_ROCWMMA_FATTN` — turn it OFF on gfx1151
+
+AMD's official guidance for RDNA 3.5 is to enable rocwmma flash-attention. On gfx1151 specifically, **don't.** The rocwmma FA path is dramatically slower than llama.cpp's runtime FA at any non-trivial context depth:
+
+| shape (Qwen3.5-27B Q8 dense) | FATTN=ON | FATTN=OFF | OFF advantage |
+|---|---|---|---|
+| pp2048 depth 0    | 283.90 | 331.86 | +16.9% |
+| pp2048 depth 4196 | 167.61 | 306.83 | **+83%** |
+| pp2048 depth 8392 | 117.08 | 282.52 | **+141%** (≈2.4×) |
+| tg128 any depth   | ~7.5   | ~7.6   | flat (TG is memory-bandwidth bound) |
+
+Same pattern on Qwen3.6-35B-A3B Q4 MoE — +21% at d=0, +89% at d=4196, **+145% at d=8392**. The gap widens with context depth in both architectures.
+
+Step 6 above uses `-DGGML_HIP_ROCWMMA_FATTN=OFF` for this reason. Raw A/B + reproduction script: [`rocwmma-fattn-sweep/`](rocwmma-fattn-sweep/). The strixhalo.wiki [ROCWMMA recommendation](https://strixhalo.wiki/AI/llamacpp-with-ROCm#rocwmma) was correct; this is the hardware evidence.
 
 ---
 
