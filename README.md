@@ -1058,6 +1058,10 @@ The community resources that got us most of the way:
 
 If this guide helps you, [open an issue](https://github.com/h34v3nzc0dex/strix-halo-llm-finetune-guide/issues) with what worked, what didn't, and what hardware you're on. We'll fold it back in.
 
+## Citing the benchmark data
+
+The raw bench logs from `rocwmma-fattn-sweep/`, `vulkan-vs-rocm-sweep/`, `cublas-hipblaslt-sweep/`, and `qwen36-bench/` are also published as a Hugging Face dataset for stable citation: [**NorthstarAurora/strix-halo-bench-data**](https://huggingface.co/datasets/NorthstarAurora/strix-halo-bench-data). Same files, same methodology; the HF version is the recommended citation target for papers and write-ups.
+
 ## License
 
 MIT — see `LICENSE`.
