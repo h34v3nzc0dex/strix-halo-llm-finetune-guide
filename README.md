@@ -943,7 +943,7 @@ ggml_vulkan: 0 = AMD Radeon Graphics (RADV GFX1151) (radv) | uma: 1 | fp16: 1 | 
 | Training (always BF16/FP32) | **ROCm/HIP** (only path with the PyTorch nightly stack) |
 | Mixed | Whichever your hot path is |
 
-Full sweep + per-shape numbers + capability extract + the build recipe for the Vulkan binary in [`vulkan-vs-rocm-sweep/`](vulkan-vs-rocm-sweep/). The Vulkan canonical dashboard for Strix Halo (with deeper per-model Vulkan numbers) is [bench.ciru.ai](https://bench.ciru.ai); this guide is the canonical ROCm + training reference.
+Full sweep + per-shape numbers + capability extract + the build recipe for the Vulkan binary in [`vulkan-vs-rocm-sweep/`](vulkan-vs-rocm-sweep/). Long-form writeup with the methodology, all depths, and the `bf16: 0` deep-dive: [**ROCm vs Vulkan on AMD Strix Halo: when each wins, and why it inverts at the precision boundary**](articles/2026-05-rocm-vs-vulkan-strix-halo-precision-inversion.md). The Vulkan canonical dashboard for Strix Halo (with deeper per-model Vulkan numbers) is [bench.ciru.ai](https://bench.ciru.ai); this guide is the canonical ROCm + training reference.
 
 ---
 

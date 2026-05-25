@@ -1,5 +1,7 @@
 # ROCm vs Vulkan on gfx1151 — backend choice depends on precision
 
+> **Long-form writeup:** [ROCm vs Vulkan on AMD Strix Halo: when each wins, and why it inverts at the precision boundary](../articles/2026-05-rocm-vs-vulkan-strix-halo-precision-inversion.md) — same data, more context, written for someone landing here cold.
+
 ## TL;DR
 
 On Strix Halo (Radeon 8060S / gfx1151 / RADV STRIX_HALO via Mesa 25.2.8), tested on Qwen3.6-35B-A3B:
