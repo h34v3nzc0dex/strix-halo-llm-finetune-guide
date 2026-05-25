@@ -1,0 +1,8 @@
+$ /srv/aurora-ai/llama.cpp-vulkan/build/bin/llama-bench --list-devices
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon Graphics (RADV GFX1151) (radv) | uma: 1 | fp16: 1 | bf16: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: KHR_coopmat
+Available devices:
+  Vulkan0: AMD Radeon Graphics (RADV GFX1151) (132096 MiB, 129941 MiB free)
+
+Mesa version: 25.2.8-0ubuntu0.24.04.1
+RADV STRIX_HALO support: built-in

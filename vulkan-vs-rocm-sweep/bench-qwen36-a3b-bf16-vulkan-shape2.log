@@ -1,0 +1,12 @@
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon Graphics (RADV GFX1151) (radv) | uma: 1 | fp16: 1 | bf16: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: KHR_coopmat
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35moe 35B.A3B BF16         |  64.60 GiB |    34.66 B | Vulkan     |  99 |  1 |    0 |          pp2048 |        307.44 ± 1.28 |
+| qwen35moe 35B.A3B BF16         |  64.60 GiB |    34.66 B | Vulkan     |  99 |  1 |    0 |           tg128 |         10.73 ± 0.00 |
+| qwen35moe 35B.A3B BF16         |  64.60 GiB |    34.66 B | Vulkan     |  99 |  1 |    0 |  pp2048 @ d4196 |        291.88 ± 1.28 |
+| qwen35moe 35B.A3B BF16         |  64.60 GiB |    34.66 B | Vulkan     |  99 |  1 |    0 |   tg128 @ d4196 |         10.68 ± 0.01 |
+| qwen35moe 35B.A3B BF16         |  64.60 GiB |    34.66 B | Vulkan     |  99 |  1 |    0 |  pp2048 @ d8392 |        289.64 ± 0.84 |
+| qwen35moe 35B.A3B BF16         |  64.60 GiB |    34.66 B | Vulkan     |  99 |  1 |    0 |   tg128 @ d8392 |         10.64 ± 0.00 |
+
+build: a497476 (1)

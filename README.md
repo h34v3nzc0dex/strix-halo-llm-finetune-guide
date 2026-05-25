@@ -899,6 +899,52 @@ Same pattern on Qwen3.6-35B-A3B Q4 MoE — +21% at d=0, +89% at d=4196, **+145% 
 
 Step 6 above uses `-DGGML_HIP_ROCWMMA_FATTN=OFF` for this reason. Raw A/B + reproduction script: [`rocwmma-fattn-sweep/`](rocwmma-fattn-sweep/). The strixhalo.wiki [ROCWMMA recommendation](https://strixhalo.wiki/AI/llamacpp-with-ROCm#rocwmma) was correct; this is the hardware evidence.
 
+### ROCm vs Vulkan — backend selection depends on precision
+
+Inference on Strix Halo can run through either of two llama.cpp backends, and **the right choice is not the same for every workload**:
+
+- **ROCm/HIP** — the production backend this guide builds in [Step 6](#step-6--llamacpp-hip-build-for-inference). Used by all the numbers in the table above. Required for training (PyTorch + ROCm 7.13 nightly).
+- **Vulkan (RADV STRIX_HALO)** — Mesa's Vulkan driver, with cooperative-matrix path. Built with `-DGGML_VULKAN=ON` (no HIP). Recipe in [`vulkan-vs-rocm-sweep/build-vulkan.sh`](vulkan-vs-rocm-sweep/build-vulkan.sh).
+
+Tested on Qwen3.6-35B-A3B at the same source commit (b9296), same hardware, same bench shape:
+
+**Q4_K_M (quantized) — Vulkan wins decode by ~22%:**
+
+| shape | ROCm/HIP | Vulkan | Winner |
+|---|---|---|---|
+| pp512 fa=1 | 1014.32 | 942.18 | ROCm (+7.7%) |
+| tg128 d=0 | 49.58 | **60.39** | **Vulkan (+21.8%)** |
+| tg128 d=8392 | 46.73 | **57.13** | **Vulkan (+22.3%)** |
+
+**BF16 (full precision) — ROCm wins decode by ~117%:**
+
+| shape | ROCm/HIP | Vulkan | Winner |
+|---|---|---|---|
+| pp512 fa=1 | **484.01** | 305.21 | **ROCm (+58.6%)** |
+| tg128 d=0 | **23.71** | 10.73 | **ROCm (+121%)** ← over 2× |
+| tg128 d=8392 | **23.09** | 10.64 | **ROCm (+117%)** |
+
+**The reason** is visible right in Vulkan's own capability report on launch:
+
+```
+ggml_vulkan: 0 = AMD Radeon Graphics (RADV GFX1151) (radv) | uma: 1 | fp16: 1 | bf16: 0 | ...
+                                                                    ^^^^^^^
+                                                                no native BF16
+```
+
+`bf16: 0` — RADV STRIX_HALO supports FP16 cooperative matrix natively but not BF16; the Vulkan backend falls back to slower kernels for BF16 ops. ROCm/HIP has BF16 wired through native HIP matmul kernels and dominates anything BF16-bound.
+
+**Practical recommendation:**
+
+| Workload | Backend |
+|---|---|
+| Quantized inference (Q4/Q5/Q6/Q8) | **Vulkan** |
+| Full-precision (BF16) inference | **ROCm/HIP** |
+| Training (always BF16/FP32) | **ROCm/HIP** (only path with the PyTorch nightly stack) |
+| Mixed | Whichever your hot path is |
+
+Full sweep + per-shape numbers + capability extract + the build recipe for the Vulkan binary in [`vulkan-vs-rocm-sweep/`](vulkan-vs-rocm-sweep/). The Vulkan canonical dashboard for Strix Halo (with deeper per-model Vulkan numbers) is [bench.ciru.ai](https://bench.ciru.ai); this guide is the canonical ROCm + training reference.
+
 ---
 
 ## Troubleshooting
