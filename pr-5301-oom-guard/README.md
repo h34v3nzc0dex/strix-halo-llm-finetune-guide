@@ -84,6 +84,51 @@ Still correct on gfx1151. Full output in `revalidation-output-284145a7.txt`.
 
 The Codex review nits in the range (P1 `llama_cpp.py:2760`, P1 `llama_cpp.py:2868`, P2 `install_python_stack.py:367`, plus two `setup.ps1` ones) are all Windows-specific code paths the Linux + ROCm-nightly stack here can't exercise. On the PyTorch nightly Linux wheel we're testing with, `torch.version.hip == '7.13.26176'` (set), so the existing `torch.version.hip` predicate in the Windows guards trips correctly on this stack — the nit applies to a different wheel family (AMD SDK / Radeon Windows) where `+rocmsdk…` shows up in `torch.__version__` instead.
 
+## Re-validation — head `80dd40e6` (2026-05-26)
+
+Leo expanded the classifier substantially. It's now layered:
+
+```python
+# Try canonical + alternate attribute spellings
+for _arch_attr in ("gcnArchName", "gcn_arch_name", "arch_name", "gfx_arch_name"):
+    _v = (getattr(_props, _arch_attr, "") or "").split(":")[0].strip()
+    if _v: _gcn_arch = _v; break
+_is_unified = _gcn_arch in {"gfx1150", "gfx1151"}
+if not _is_unified and not _gcn_arch:
+    # Fallback to device-name string match
+    _dev_lower = _dev_name.lower()
+    _is_unified = "890m" in _dev_lower or "880m" in _dev_lower
+```
+
+Three paths to test. `revalidate-80dd40e6.py` runs all three on gfx1151 hardware:
+
+| Path | Test | Result on `Radeon 8060S` |
+|---|---|---|
+| 1 — canonical `gcnArchName` | Real torch props | ✓ `gfx1151` → unified → 0.80 |
+| 2 — alternate-spelling loop | Mock missing `gcnArchName`, define `gcn_arch_name` | ✓ loop finds the alternate, → unified |
+| 3 — device-name fallback | Mock ALL arch attrs missing | **✗ misclassifies Strix Halo as discrete → 0.90 → 12.8 GiB OS headroom** |
+
+The Path 3 failure is a real bug for Strix Halo specifically:
+
+- Leo's fallback matches `890m` (Strix Point) and `880m` (Strix Point).
+- **Strix Halo's marketing name is `Radeon 8060S` / `8050S`** (Ryzen AI MAX series), NOT `890M`. The string match misses it.
+- Strix Point variants are gfx1150; Strix Halo is gfx1151. Both are unified-memory APUs that need the 0.80 cap. The current fallback covers only the gfx1150 marketing family.
+
+**Suggested one-line fix:**
+
+```python
+_is_unified = (
+    "890m" in _dev_lower or "880m" in _dev_lower
+    or "8060s" in _dev_lower or "8050s" in _dev_lower
+)
+```
+
+(Confirmed device name on Strix Halo Ryzen AI MAX+ 395 is `Radeon 8060S Graphics`. The variant `Radeon 8050S` is the cut-down Strix Halo SKU. Both should be matched.)
+
+In practice on this stack the bug is latent — `gcnArchName` IS populated by the PyTorch nightly ROCm wheels, so Path 1 succeeds and Path 3 is never reached. The bug surfaces only on AMD SDK / Radeon Windows wheels where `gcnArchName` may be absent — which is the exact scenario the fallback was added to handle.
+
+Full per-test output in `revalidation-output-80dd40e6.txt`.
+
 ## Files
 
 | File | What it is |
@@ -92,5 +137,7 @@ The Codex review nits in the range (P1 `llama_cpp.py:2760`, P1 `llama_cpp.py:286
 | `validation-output.txt` | Captured run showing the `32457939` misclassification |
 | `revalidate-9393fffe.py` | Re-validation — runs the merged `9393fffe` `gcnArchName` classifier verbatim |
 | `revalidation-output-9393fffe.txt` | Captured run confirming the fix on gfx1151 |
-| `revalidate-284145a7.py` | Re-validation at the current PR head — identical to `9393fffe` script except stamping |
+| `revalidate-284145a7.py` | Re-validation at the previous PR head — identical to `9393fffe` script except stamping |
 | `revalidation-output-284145a7.txt` | Captured run confirming the classifier still trips correctly at `284145a7` |
+| `revalidate-80dd40e6.py` | Re-validation at the latest PR head — tests all three classifier paths (canonical, alternate-spelling loop, device-name fallback) |
+| `revalidation-output-80dd40e6.txt` | Captured run; Test 3 demonstrates the Strix Halo fallback bug |

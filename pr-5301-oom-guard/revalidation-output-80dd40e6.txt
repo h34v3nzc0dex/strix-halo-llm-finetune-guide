@@ -1,0 +1,43 @@
+══════════════════════════════════════════════════════════════════════
+Hardware: Radeon 8060S Graphics, gcnArchName='gfx1151', total_mem=128.0 GiB
+══════════════════════════════════════════════════════════════════════
+
+[Test 1] Canonical path (real torch props, gcnArchName populated)
+  _gcn_arch         : 'gfx1151'
+  _is_unified       : True
+  fallback fired?   : False
+  fraction          : 0.8
+  GPU cap           : 102.4 GiB
+  OS headroom       : 25.6 GiB
+  RESULT            : ✓ correct (Strix Halo → unified → 0.80)
+
+[Test 2] Alternate-spelling path (mock gcnArchName missing)
+  attributes available on real props that match the alternate names:
+    gcn_arch_name: present=False, value=None
+    arch_name: present=False, value=None
+    gfx_arch_name: present=False, value=None
+  → with gcn_arch_name='gfx1151' set:
+    _gcn_arch       : 'gfx1151'
+    fallback fired? : False
+    RESULT          : ✓ alternate-spelling loop works
+
+[Test 3] Device-name fallback path (mock ALL arch attrs missing)
+  device name passed to fallback : 'Radeon 8060S Graphics'
+  _gcn_arch                      : '' (empty → fallback engaged)
+  fallback fired?                : True
+  _is_unified                    : False
+  fraction                       : 0.9
+  GPU cap                        : 115.2 GiB
+  OS headroom                    : 12.8 GiB
+  RESULT                         : ✗ FALLBACK MISCLASSIFIES STRIX HALO AS DISCRETE
+    Why: device name 'Radeon 8060S Graphics' does not contain '890m' or '880m'.
+    890M / 880M are Strix POINT marketing names (gfx1150).
+    Strix HALO (gfx1151) ships as Radeon 8060S / 8050S.
+    Fix needed: extend fallback to also match '8060s' and '8050s'.
+    Impact: 0.90 cap = 115.2 GiB → 12.8 GiB OS headroom (will freeze a 128 GB box).
+
+[Test 4] Sanity check — Strix Point (890M) hits the existing fallback correctly
+  device name        : 'AMD Radeon 890M Graphics'
+  fallback fired?    : True
+  _is_unified        : True
+  RESULT             : ✓ Strix Point fallback works
