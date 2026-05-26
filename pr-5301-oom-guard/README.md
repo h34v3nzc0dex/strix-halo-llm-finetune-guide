@@ -129,6 +129,26 @@ In practice on this stack the bug is latent — `gcnArchName` IS populated by th
 
 Full per-test output in `revalidation-output-80dd40e6.txt`.
 
+## Re-validation — head `62e18d81` (2026-05-26, late)
+
+Leo adopted the 8060s/8050s fix in `59825bed` and extracted the classifier into a unit-testable helper:
+
+```python
+def _rocm_classify_unified_memory(props) -> tuple[str, bool]:
+    """Returns (gcn_arch, is_unified)."""
+    ...
+```
+
+He also added `studio/backend/tests/test_rocm_oom_guard.py` with 10 test functions (31 parameterized cases) covering all three classification paths.
+
+`revalidate-62e18d81.py` re-runs:
+1. Real gfx1151 hardware → `("gfx1151", True)` ✓
+2. The Strix Halo 8060S Path-3 fallback that previously misclassified → `("", True)` ✓ (fixed)
+3. All 31 of Leo's parameterized test cases (no pytest dep — plain assertions): **33/33 pass**
+4. `torch.cuda.is_bf16_supported()` for the separate RDNA2 dtype fix in `62e18d81` (`_auto_dtype = None if is_bfloat16_supported() else torch.float16`) → `True` on gfx1151, dtype branch doesn't affect us
+
+Full output in `revalidation-output-62e18d81.txt`.
+
 ## Files
 
 | File | What it is |
@@ -139,5 +159,7 @@ Full per-test output in `revalidation-output-80dd40e6.txt`.
 | `revalidation-output-9393fffe.txt` | Captured run confirming the fix on gfx1151 |
 | `revalidate-284145a7.py` | Re-validation at the previous PR head — identical to `9393fffe` script except stamping |
 | `revalidation-output-284145a7.txt` | Captured run confirming the classifier still trips correctly at `284145a7` |
-| `revalidate-80dd40e6.py` | Re-validation at the latest PR head — tests all three classifier paths (canonical, alternate-spelling loop, device-name fallback) |
+| `revalidate-80dd40e6.py` | Re-validation at PR head 80dd40e6 — tests all three classifier paths (canonical, alternate-spelling loop, device-name fallback) |
 | `revalidation-output-80dd40e6.txt` | Captured run; Test 3 demonstrates the Strix Halo fallback bug |
+| `revalidate-62e18d81.py` | Re-validation at PR head 62e18d81 — verifies the 8060s/8050s fix landed + replays all 31 of Leo's new parameterized test cases against our gfx1151 box + checks `is_bf16_supported()` for the separate RDNA2 dtype fix |
+| `revalidation-output-62e18d81.txt` | Captured run; all 33 cases pass, 8060S regression fixed, bf16 supported (RDNA2 dtype branch doesn't affect us) |

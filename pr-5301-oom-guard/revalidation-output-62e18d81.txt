@@ -1,0 +1,28 @@
+══════════════════════════════════════════════════════════════════════
+PART 1 — real hardware (gfx1151)
+══════════════════════════════════════════════════════════════════════
+  device name: 'Radeon 8060S Graphics', gcnArchName: 'gfx1151'
+  → ('gfx1151', True)
+  ✓ correct: gfx1151 → unified → 0.80 cap → 102.4 GiB GPU / 25.6 GiB OS
+
+══════════════════════════════════════════════════════════════════════
+PART 2 — Strix Halo 8060S device-name fallback (the bug we flagged)
+══════════════════════════════════════════════════════════════════════
+  mock props: name='Radeon 8060S Graphics', NO arch attrs
+  → ('', True)
+  ✓ FIXED: device-name fallback now matches 8060s → unified → 0.80
+
+══════════════════════════════════════════════════════════════════════
+PART 3 — replay all 31 parameterized cases from Leo's test_rocm_oom_guard.py
+══════════════════════════════════════════════════════════════════════
+
+  33/33 tests passed
+  ✓ all of Leo's test cases pass on the verbatim helper
+
+══════════════════════════════════════════════════════════════════════
+PART 4 — is_bfloat16_supported() check for the RDNA2 dtype fix (62e18d81)
+══════════════════════════════════════════════════════════════════════
+  torch.cuda.is_bf16_supported() = True
+  ✓ gfx1151 supports bf16 — Leo's _auto_dtype check keeps dtype=None, behavior unchanged for us
+
+ALL CHECKS PASSED
