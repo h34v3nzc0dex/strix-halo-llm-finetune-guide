@@ -187,6 +187,7 @@ No preflight failure, no source-build fallback. The lemonade bundle is overlaid 
 | 2 | `76fe0912` | install fails | missing `librocm_kpack`, `librocm_sysdeps_*` |
 | 3 | `c41e20db` | install fails one layer deeper | missing `libLLVM`, `libclang-cpp` |
 | 4 | `9d9eeb27` | **install succeeds end-to-end** | `lib*.so*` glob covers all transitive deps |
+| 5 | `d4d447c0` | install succeeds; summary line distinguishes source from binary origin | `binary_repo` + `binary_release_tag` recorded in `UNSLOTH_PREBUILT_INFO.json`; `setup.sh` summary shows `installed release: unslothai/llama.cpp@b9334 + lemonade@b1280` |
 
 ## Reproducing
 
@@ -232,3 +233,6 @@ cd unsloth
 | `install-9d9eeb27.log` | Non-verbose `./install.sh --local` at `9d9eeb27` — clean success |
 | `install-9d9eeb27-verbose.log` | Verbose run with full `[llama-prebuilt]` trace showing lemonade b1280 selection + validation + activation |
 | `ldd-llama-server-9d9eeb27.txt` | Full transitive resolution from activated `llama-server` — 0 missing |
+| **Pass 5 (2026-05-26 late)** | |
+| `install-d4d447c0-verbose.log` | Verbose run after the summary-line surfacing fix; same successful flow, new "+ lemonade@b1280" suffix on the install-complete line |
+| `UNSLOTH_PREBUILT_INFO-d4d447c0.json` | Snapshot of the install metadata showing the new `binary_repo` + `binary_release_tag` fields populated for a lemonade install |
