@@ -1,0 +1,12 @@
+device name (torch)        : 'Radeon 8060S Graphics'
+gcnArchName (flag-stripped): 'gfx1151'
+torch total_memory         : 128.0 GiB
+
+classifier @ 284145a7      : _is_unified=True  -> fraction=0.8
+  -> GPU allocator cap     : 102.4 GiB
+  -> left for OS/page-cache: 25.6 GiB
+
+RESULT: FIXED. gfx1151 now classifies as unified -> 0.80 -> 102.4 GiB cap.
+        The 32457939 name-regex returned discrete/0.90 on this same box;
+        284145a7's gcnArchName check returns the correct value.
+        set_per_process_memory_fraction(0.8) accepted on gfx1151

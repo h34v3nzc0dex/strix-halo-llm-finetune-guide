@@ -65,6 +65,25 @@ classifier @ 9393fffe      : _is_unified=True  -> fraction=0.80
 
 Same box that returned `_is_unified=False → 0.90` under the `32457939` name-regex now returns `True → 0.80`. **Fixed.**
 
+## Re-validation — head `284145a7` (2026-05-25)
+
+The classifier block (`worker.py:2291-2295`) is byte-identical at `284145a7` to the `9393fffe` version — `git compare 9393fffe...284145a7` does not list `studio/backend/core/training/worker.py` as a modified file. Re-ran the same script anyway for hygiene:
+
+```
+device name (torch)        : 'Radeon 8060S Graphics'
+gcnArchName (flag-stripped): 'gfx1151'
+torch total_memory         : 128.0 GiB
+
+classifier @ 284145a7      : _is_unified=True  -> fraction=0.8
+  -> GPU allocator cap     : 102.4 GiB
+  -> left for OS/page-cache: 25.6 GiB
+set_per_process_memory_fraction(0.8) accepted on gfx1151
+```
+
+Still correct on gfx1151. Full output in `revalidation-output-284145a7.txt`.
+
+The Codex review nits in the range (P1 `llama_cpp.py:2760`, P1 `llama_cpp.py:2868`, P2 `install_python_stack.py:367`, plus two `setup.ps1` ones) are all Windows-specific code paths the Linux + ROCm-nightly stack here can't exercise. On the PyTorch nightly Linux wheel we're testing with, `torch.version.hip == '7.13.26176'` (set), so the existing `torch.version.hip` predicate in the Windows guards trips correctly on this stack — the nit applies to a different wheel family (AMD SDK / Radeon Windows) where `+rocmsdk…` shows up in `torch.__version__` instead.
+
 ## Files
 
 | File | What it is |
@@ -73,3 +92,5 @@ Same box that returned `_is_unified=False → 0.90` under the `32457939` name-re
 | `validation-output.txt` | Captured run showing the `32457939` misclassification |
 | `revalidate-9393fffe.py` | Re-validation — runs the merged `9393fffe` `gcnArchName` classifier verbatim |
 | `revalidation-output-9393fffe.txt` | Captured run confirming the fix on gfx1151 |
+| `revalidate-284145a7.py` | Re-validation at the current PR head — identical to `9393fffe` script except stamping |
+| `revalidation-output-284145a7.txt` | Captured run confirming the classifier still trips correctly at `284145a7` |
