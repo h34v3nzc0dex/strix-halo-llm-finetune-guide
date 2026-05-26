@@ -1,0 +1,59 @@
+
+  🦥 Unsloth Studio Installer
+  ────────────────────────────────────────────────────
+
+  platform       linux
+  deps           all system dependencies found
+                 preserving existing environment for rollback...
+                 previous environment preserved for rollback
+  venv           creating Python 3.13 virtual environment
+                 /home/auroraai/.unsloth/studio/unsloth_studio
+  venv           using environment
+                 /home/auroraai/.unsloth/studio/unsloth_studio
+
+  AMD Radeon + ROCm detected -- installing PyTorch wheels from repo.radeon.com
+
+                 installing PyTorch from Radeon repo (https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/)...
+                 installing bitsandbytes for AMD ROCm (pre-release, PR #1887)...
+                 installing unsloth (this may take a few minutes)...
+                 overlaying local repo (editable)...
+                 overlaying unsloth-zoo from git main...
+                 repairing ROCm torch (overwritten by dependency resolution)...
+  setup          running unsloth studio update...
+
+  🦥 Unsloth Studio Setup
+  ────────────────────────────────────────────────────
+                 local mode: overlaying /srv/aurora-ai/pr5303-test/unsloth (editable) + unsloth-zoo from git main
+  node           v24.15.0 | npm 11.12.1
+                 bun already installed (1.3.14)
+                 building frontend...
+                 using bun for package install (faster)
+  frontend       built
+  deps           [=-------------------]  1/13  pip bootstrap         deps           [===-----------------]  2/13  ROCm torch check       bnb pre-release unreachable; falling back to PyPI (4-bit decode will be broken on ROCm)
+  deps           [====----------------]  3/13  unsloth extras        deps           [======--------------]  4/13  extra codecs          deps           [=======-------------]  5/13  dependency overrides  deps           [=========-----------]  6/13  triton kernels        deps           [==========----------]  7/13  flash-attn            warning        No compatible flash-attn prebuilt wheel found
+  deps           [============--------]  8/13  studio deps           deps           [=============-------]  9/13  data designer deps    deps           [===============-----] 10/13  data designer         deps           [================----] 11/13  local plugin          deps           [==================--] 12/13  finalizing            deps           [====================] 13/13  ROCm torch (final)  
+   bnb pre-release unreachable; falling back to PyPI (4-bit decode will be broken on ROCm)
+  deps           installed
+  transformers   5.3.0 pre-installed
+  transformers   5.5.0 pre-installed
+                 installing prebuilt llama.cpp...
+  llama.cpp      prebuilt installed and validated
+                 installed release: unslothai/llama.cpp@b9334
+  ────────────────────────────────────────────────────
+  Unsloth Studio Installed
+  ────────────────────────────────────────────────────
+  launch         unsloth studio -p 8888
+                 (add -H 0.0.0.0 to allow network / cloud access)
+
+                 Created Unsloth Studio shortcut
+
+  Unsloth Studio installed!
+  ────────────────────────────────────────────────────
+
+  launch         manual commands:
+                 unsloth studio -p 8888
+                 or activate env first:
+                 source '/home/auroraai/.unsloth/studio/unsloth_studio/bin/activate'
+                 unsloth studio -p 8888
+                 (add -H 0.0.0.0 to allow network / cloud access)
+

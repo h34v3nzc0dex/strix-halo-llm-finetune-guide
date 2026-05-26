@@ -152,6 +152,42 @@ if choice.install_kind == "linux-rocm":
 
 Safe for the upstream ggml-org tarball path too: that tarball links system `/opt/rocm` and ships only `libllama` / `libggml*`, so `lib*.so*` matches the same set there as the current explicit list.
 
+---
+
+## Pass 4 — 2026-05-26 — re-test at `9d9eeb27` after `lib*.so*` adopted
+
+Leo adopted the broad-glob suggestion in commit `9d9eeb27` (`fix: use broad lib*.so* glob for linux-rocm runtime overlay`). Full `./install.sh --local --verbose` against that head.
+
+### Result — clean lemonade install, end-to-end
+
+Key lines from `install-9d9eeb27-verbose.log`:
+
+```
+[llama-prebuilt] AMD GPU 'gfx1151' (gfx1151) -- trying lemonade-sdk ROCm prebuilt llama-b1280-ubuntu-rocm-gfx1151-x64.zip
+[llama-prebuilt] selected llama-b1280-ubuntu-rocm-gfx1151-x64.zip (lemonade) from published release b9334 for Linux x86_64
+[llama-prebuilt] downloading llama-b1280-ubuntu-rocm-gfx1151-x64.zip from lemonade release (443.8 MiB)
+[llama-prebuilt] staged prebuilt validation succeeded for llama-b1280-ubuntu-rocm-gfx1151-x64.zip
+[llama-prebuilt] activated install tree confirmed at /home/auroraai/.unsloth/llama.cpp
+  llama.cpp      prebuilt installed and validated
+```
+
+No preflight failure, no source-build fallback. The lemonade bundle is overlaid onto the upstream source tree and activated as the production install.
+
+### Verification on the installed tree
+
+- **80 `.so` files** present in `/home/auroraai/.unsloth/llama.cpp/build/bin/` (up from ~10 in the upstream-only path), including all previously-missing transitive deps: `libLLVM.so.23.0git`, `libclang-cpp.so.23.0git`, `libamd_comgr.so.3`, `librocm_kpack.so*`, `librocm_sysdeps_*`, `librocblas.so*`, `librocsolver.so.0`, `libroctx64.so.4`.
+- **`ldd llama-server`: 0 missing libs**, every NEEDED entry resolves into `/home/auroraai/.unsloth/llama.cpp/build/bin/` (full output in `ldd-llama-server-9d9eeb27.txt`).
+- **`llama-server --version`**: `version: 1 (35a74c8), built with Clang 23.0.0 for Linux` — runs cleanly.
+
+### Resolved sequence across all four passes
+
+| Pass | HEAD | Result | What changed |
+|---|---|---|---|
+| 1 | `39cf5d6` | manual staging works | asset resolution path correct |
+| 2 | `76fe0912` | install fails | missing `librocm_kpack`, `librocm_sysdeps_*` |
+| 3 | `c41e20db` | install fails one layer deeper | missing `libLLVM`, `libclang-cpp` |
+| 4 | `9d9eeb27` | **install succeeds end-to-end** | `lib*.so*` glob covers all transitive deps |
+
 ## Reproducing
 
 ```bash
@@ -187,3 +223,12 @@ cd unsloth
 | `ldd-libamdhip64.txt` | Direct `NEEDED` entries of `libamdhip64.so.7` — proves the libs are runtime deps |
 | `ldd-llama-server.txt` | Full transitive resolution from `llama-server` when all bundle libs are present — proves the fix works |
 | `bench-after-manual-full-stage.log` | `llama-bench` raw output with fully-staged bundle on Qwen3.5-27B Q8_0 |
+| **Pass 3 (2026-05-21)** | |
+| `install-c41e20db.log` | `./install.sh --local` at `c41e20db` — preflight fails on `libLLVM` + `libclang-cpp` |
+| `ldd-libamd_comgr.txt` | Direct `NEEDED` entries of `libamd_comgr.so` — shows it links libLLVM and libclang-cpp |
+| `overlay-simulation.py` | Reproducible script: simulates `runtime_patterns_for_choice` overlays to find the minimal/sufficient pattern set |
+| `overlay-simulation-output.txt` | Output: c41e20db patterns leave 2 unresolved, `+libLLVM/libclang-cpp` resolves all, broader `lib*.so*` resolves all |
+| **Pass 4 (2026-05-26)** | |
+| `install-9d9eeb27.log` | Non-verbose `./install.sh --local` at `9d9eeb27` — clean success |
+| `install-9d9eeb27-verbose.log` | Verbose run with full `[llama-prebuilt]` trace showing lemonade b1280 selection + validation + activation |
+| `ldd-llama-server-9d9eeb27.txt` | Full transitive resolution from activated `llama-server` — 0 missing |
