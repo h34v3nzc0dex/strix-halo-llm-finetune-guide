@@ -1,0 +1,312 @@
+
+  🦥 Unsloth Studio Installer
+  ────────────────────────────────────────────────────
+
+  platform       linux
+  deps           all system dependencies found
+                 preserving existing environment for rollback...
+                 previous environment preserved for rollback
+  venv           creating Python 3.13 virtual environment
+                 /home/auroraai/.unsloth/studio/unsloth_studio
+Using CPython 3.13.13
+Creating virtual environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+Activate with: source /home/auroraai/.unsloth/studio/unsloth_studio/bin/activate
+  venv           using environment
+                 /home/auroraai/.unsloth/studio/unsloth_studio
+
+  AMD Radeon + ROCm detected -- installing PyTorch wheels from repo.radeon.com
+
+                 installing PyTorch from Radeon repo (https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/)...
+Using Python 3.13.13 environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+Resolved 15 packages in 171ms
+Installed 15 packages in 137ms
+ + filelock==3.29.0
+ + fsspec==2026.4.0
+ + jinja2==3.1.6
+ + markupsafe==3.0.3
+ + mpmath==1.3.0
+ + networkx==3.6.1
+ + numpy==2.4.6
+ + pillow==12.2.0
+ + setuptools==82.0.1
+ + sympy==1.14.0
+ + torch==2.9.1+rocm7.1.0.lw.git351ff442 (from https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/torch-2.9.1%2Brocm7.1.0.lw.git351ff442-cp313-cp313-linux_x86_64.whl)
+ + torchaudio==2.9.0+rocm7.1.0.gite3c6ee2b (from https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/torchaudio-2.9.0%2Brocm7.1.0.gite3c6ee2b-cp313-cp313-linux_x86_64.whl)
+ + torchvision==0.24.0+rocm7.1.0.gitb919bd0c (from https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/torchvision-0.24.0%2Brocm7.1.0.gitb919bd0c-cp313-cp313-linux_x86_64.whl)
+ + triton==3.5.1+rocm7.1.0.gita272dfa8 (from https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/triton-3.5.1%2Brocm7.1.0.gita272dfa8-cp313-cp313-linux_x86_64.whl)
+ + typing-extensions==4.15.0
+Looking in links: /tmp/tmps9hc94m5
+Processing /tmp/tmps9hc94m5/pip-26.0.1-py3-none-any.whl
+Installing collected packages: pip
+Successfully installed pip-26.0.1
+                 installing bitsandbytes for AMD ROCm (pre-release, PR #1887)...
+Collecting bitsandbytes==1.33.7rc0
+  Downloading https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_main/bitsandbytes-1.33.7.preview-py3-none-manylinux_2_24_x86_64.whl (70.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 70.2/70.2 MB 100.5 MB/s  0:00:00
+Installing collected packages: bitsandbytes
+Successfully installed bitsandbytes-0.50.0.dev0
+
+[notice] A new release of pip is available: 26.0.1 -> 26.1.1
+[notice] To update, run: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python -m pip install --upgrade pip
+                 installing unsloth (this may take a few minutes)...
+Using Python 3.13.13 environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+Resolved 82 packages in 381ms
+Prepared 1 package in 0.17ms
+Uninstalled 1 package in 0.79ms
+Installed 68 packages in 36ms
+ + accelerate==1.13.0
+ + aiohappyeyeballs==2.6.2
+ + aiohttp==3.13.5
+ + aiosignal==1.4.0
+ + annotated-doc==0.0.4
+ + annotated-types==0.7.0
+ + anyio==4.13.0
+ + attrs==26.1.0
+ + certifi==2026.5.20
+ + charset-normalizer==3.4.7
+ + click==8.4.1
+ + cut-cross-entropy==25.1.1
+ + datasets==4.3.0
+ + diffusers==0.37.1
+ + dill==0.4.0
+ + docstring-parser==0.18.0
+ + frozenlist==1.8.0
+ - fsspec==2026.4.0
+ + fsspec==2025.9.0
+ + h11==0.16.0
+ + hf-transfer==0.1.9
+ + hf-xet==1.5.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + huggingface-hub==1.16.4
+ + idna==3.16
+ + importlib-metadata==9.0.0
+ + markdown-it-py==4.2.0
+ + mdurl==0.1.2
+ + msgspec==0.21.1
+ + multidict==6.7.1
+ + multiprocess==0.70.16
+ + nest-asyncio==1.6.0
+ + packaging==26.2
+ + pandas==3.0.3
+ + peft==0.19.1
+ + propcache==0.5.2
+ + protobuf==7.35.0
+ + psutil==7.2.2
+ + pyarrow==24.0.0
+ + pydantic==2.13.4
+ + pydantic-core==2.46.4
+ + pygments==2.20.0
+ + python-dateutil==2.9.0.post0
+ + pyyaml==6.0.3
+ + regex==2026.5.9
+ + requests==2.34.2
+ + rich==15.0.0
+ + safetensors==0.7.0
+ + sentencepiece==0.2.1
+ + shellingham==1.5.4
+ + six==1.17.0
+ + tokenizers==0.22.2
+ + torchao==0.17.0
+ + tqdm==4.67.3
+ + transformers==5.5.0
+ + trl==0.24.0
+ + typeguard==4.5.2
+ + typer==0.25.1
+ + typing-inspection==0.4.2
+ + tyro==1.0.13
+ + unsloth==2026.5.8
+ + unsloth-zoo==2026.5.4
+ + urllib3==2.7.0
+ + wheel==0.47.0
+ + xformers==0.0.33.post2
+ + xxhash==3.7.0
+ + yarl==1.24.2
+ + zipp==4.1.0
+                 overlaying local repo (editable)...
+Using Python 3.13.13 environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+Resolved 1 package in 1.27s
+   Building unsloth @ file:///srv/aurora-ai/pr5303-test/unsloth
+      Built unsloth @ file:///srv/aurora-ai/pr5303-test/unsloth
+Prepared 1 package in 789ms
+Uninstalled 1 package in 9ms
+Installed 1 package in 0.78ms
+ - unsloth==2026.5.8
+ + unsloth==2026.5.8 (from file:///srv/aurora-ai/pr5303-test/unsloth)
+                 overlaying unsloth-zoo from git main...
+Using Python 3.13.13 environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+   Updating https://github.com/unslothai/unsloth-zoo (HEAD)
+    Updated https://github.com/unslothai/unsloth-zoo (bea8b483b9a6a457c12d06bcb15f8162b034eca0)
+Resolved 1 package in 2.19s
+   Building unsloth-zoo @ git+https://github.com/unslothai/unsloth-zoo@bea8b483b9a6a457c12d06bcb15f8162b034eca0
+      Built unsloth-zoo @ git+https://github.com/unslothai/unsloth-zoo@bea8b483b9a6a457c12d06bcb15f8162b034eca0
+Prepared 1 package in 219ms
+Uninstalled 1 package in 0.90ms
+Installed 1 package in 1ms
+ - unsloth-zoo==2026.5.4
+ + unsloth-zoo==2026.5.4 (from git+https://github.com/unslothai/unsloth-zoo@bea8b483b9a6a457c12d06bcb15f8162b034eca0)
+                 repairing ROCm torch (overwritten by dependency resolution)...
+Using Python 3.13.13 environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+Resolved 15 packages in 1.89s
+Prepared 15 packages in 0.39ms
+Uninstalled 14 packages in 133ms
+Installed 15 packages in 168ms
+ ~ filelock==3.29.0
+ - fsspec==2025.9.0
+ + fsspec==2026.4.0
+ ~ jinja2==3.1.6
+ ~ markupsafe==3.0.3
+ ~ mpmath==1.3.0
+ ~ networkx==3.6.1
+ - numpy==2.4.6
+ + numpy==2.4.4
+ ~ pillow==12.2.0
+ - setuptools==82.0.1
+ + setuptools==70.2.0
+ ~ sympy==1.14.0
+ - torch==2.9.1+rocm7.1.0.lw.git351ff442 (from https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/torch-2.9.1%2Brocm7.1.0.lw.git351ff442-cp313-cp313-linux_x86_64.whl)
+ + torch==2.10.0+rocm7.1
+ - torchaudio==2.9.0+rocm7.1.0.gite3c6ee2b (from https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/torchaudio-2.9.0%2Brocm7.1.0.gite3c6ee2b-cp313-cp313-linux_x86_64.whl)
+ + torchaudio==2.11.0+rocm7.1
+ - torchvision==0.24.0+rocm7.1.0.gitb919bd0c (from https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/torchvision-0.24.0%2Brocm7.1.0.gitb919bd0c-cp313-cp313-linux_x86_64.whl)
+ + torchvision==0.25.0+rocm7.1
+ + triton-rocm==3.6.0
+ ~ typing-extensions==4.15.0
+  setup          running unsloth studio update...
+
+  🦥 Unsloth Studio Setup
+  ────────────────────────────────────────────────────
+                 verbose diagnostics enabled
+                 local mode: overlaying /srv/aurora-ai/pr5303-test/unsloth (editable) + unsloth-zoo from git main
+  frontend       up to date
+                 frontend dist is newer than source inputs
+
+up to date in 105ms
+  deps           Bootstrapping pip via uv...
+  deps           bitsandbytes (AMD, pre-release main)...
+Using Python 3.13.13 environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+Resolved 1 package in 366ms
+Prepared 1 package in 89ms
+Uninstalled 1 package in 8ms
+error: Failed to install: bitsandbytes-1.33.7rc0-py3-none-manylinux_2_24_x86_64.whl (bitsandbytes==1.33.7rc0 (from https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_main/bitsandbytes-1.33.7.preview-py3-none-manylinux_2_24_x86_64.whl))
+  Caused by: Wheel version does not match filename (0.50.0.dev0 != 1.33.7rc0), which indicates a malformed wheel. If this is intentional, set `UV_SKIP_WHEEL_FILENAME_CHECK=1`.
+
+   bnb pre-release unreachable; falling back to PyPI (4-bit decode will be broken on ROCm)
+   bitsandbytes (AMD)...
+   Installing additional unsloth dependencies...
+   Installing extras (no-deps)...
+   Installing dependency overrides...
+   Installing triton kernels...
+  warning        No compatible flash-attn prebuilt wheel found
+   Installing studio dependencies...
+   Installing data-designer base dependencies...
+   Installing data-designer...
+   Installing local data-designer unstructured plugin...
+   Installing local data-designer github plugin...
+  deps           Patching single-env metadata...
+  deps           bitsandbytes (AMD, pre-release main)...
+Using Python 3.13.13 environment at: /home/auroraai/.unsloth/studio/unsloth_studio
+Resolved 1 package in 366ms
+Prepared 1 package in 87ms
+Uninstalled 1 package in 0.77ms
+error: Failed to install: bitsandbytes-1.33.7rc0-py3-none-manylinux_2_24_x86_64.whl (bitsandbytes==1.33.7rc0 (from https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_main/bitsandbytes-1.33.7.preview-py3-none-manylinux_2_24_x86_64.whl))
+  Caused by: Wheel version does not match filename (0.50.0.dev0 != 1.33.7rc0), which indicates a malformed wheel. If this is intentional, set `UV_SKIP_WHEEL_FILENAME_CHECK=1`.
+
+   bnb pre-release unreachable; falling back to PyPI (4-bit decode will be broken on ROCm)
+   bitsandbytes (AMD)...
+  deps           installed
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 1 package in 1ms
+Installed 1 package in 18ms
+ + transformers==5.3.0
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 1 package in 0.75ms
+Installed 1 package in 3ms
+ + huggingface-hub==1.8.0
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 1 package in 0.59ms
+Installed 1 package in 1ms
+ + hf-xet==1.4.2
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 7 packages in 2ms
+Installed 7 packages in 2ms
+ + certifi==2026.5.20
+ + charset-normalizer==3.4.7
+ + idna==3.16
+ + regex==2026.5.9
+ + requests==2.34.2
+ + tiktoken==0.13.0
+ + urllib3==2.7.0
+  transformers   5.3.0 pre-installed
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 1 package in 0.71ms
+Installed 1 package in 17ms
+ + transformers==5.5.0
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 1 package in 0.75ms
+Installed 1 package in 3ms
+ + huggingface-hub==1.8.0
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 1 package in 0.55ms
+Installed 1 package in 1ms
+ + hf-xet==1.4.2
+Using CPython 3.13.13 interpreter at: /home/auroraai/.unsloth/studio/unsloth_studio/bin/python
+Resolved 7 packages in 3ms
+Installed 7 packages in 2ms
+ + certifi==2026.5.20
+ + charset-normalizer==3.4.7
+ + idna==3.16
+ + regex==2026.5.9
+ + requests==2.34.2
+ + tiktoken==0.13.0
+ + urllib3==2.7.0
+  transformers   5.5.0 pre-installed
+                 requested llama.cpp tag: latest (repo: unslothai/llama.cpp)
+                 installing prebuilt llama.cpp...
+[llama-prebuilt] no existing llama.cpp install detected at /home/auroraai/.unsloth/llama.cpp; performing fresh prebuilt install
+[llama-prebuilt] AMD GPU 'gfx1151' (gfx1151) -- trying lemonade-sdk ROCm prebuilt llama-b1280-ubuntu-rocm-gfx1151-x64.zip (works on any glibc Linux, not just Ubuntu)
+[llama-prebuilt] NOTE: lemonade-sdk/llamacpp-rocm releases are not covered by the Unsloth approved-hash manifest; download integrity relies on functional validation (llama-bench / llama-server smoke tests) after extraction. Set UNSLOTH_DISABLE_LEMONADE_ROCM=1 to skip lemonade and fall back to the upstream HIP build path.
+[llama-prebuilt] AMD GPU 'gfx1151' (gfx1151) -- trying lemonade-sdk ROCm prebuilt llama-b1280-ubuntu-rocm-gfx1151-x64.zip (works on any glibc Linux, not just Ubuntu)
+[llama-prebuilt] NOTE: lemonade-sdk/llamacpp-rocm releases are not covered by the Unsloth approved-hash manifest; download integrity relies on functional validation (llama-bench / llama-server smoke tests) after extraction. Set UNSLOTH_DISABLE_LEMONADE_ROCM=1 to skip lemonade and fall back to the upstream HIP build path.
+[llama-prebuilt] using cached tiny GGUF validation model from /home/auroraai/.unsloth/.cache/stories260K.gguf
+[llama-prebuilt] selected llama-b1280-ubuntu-rocm-gfx1151-x64.zip (lemonade) from published release b9334 for Linux x86_64
+[llama-prebuilt] created install staging dir /home/auroraai/.unsloth/.staging/llama.cpp.staging-hd83ywj2
+[llama-prebuilt] hydrating upstream llama.cpp source for b9334 into /home/auroraai/.unsloth/.staging/llama.cpp.staging-hd83ywj2
+[llama-prebuilt] downloading llama.cpp source tree for b9334
+Downloading llama.cpp-source-b9334.tar.gz: 25.0 MiB downloaded at 5.4 MiB/s
+Downloading llama.cpp-source-b9334.tar.gz: 32.4 MiB downloaded at 5.5 MiB/s
+[llama-prebuilt] downloaded llama.cpp source tree for b9334 without a published sha256; relying on install validation
+[llama-prebuilt] overlaying prebuilt bundle llama-b1280-ubuntu-rocm-gfx1151-x64.zip into /home/auroraai/.unsloth/.staging/llama.cpp.staging-hd83ywj2
+[llama-prebuilt] downloading llama-b1280-ubuntu-rocm-gfx1151-x64.zip from lemonade release
+Downloading llama-b1280-ubuntu-rocm-gfx1151-x64.zip:   0.2% (1.0 MiB/443.8 MiB) at 8.5 MiB/s
+Downloading llama-b1280-ubuntu-rocm-gfx1151-x64.zip:  25.0% (111.0 MiB/443.8 MiB) at 126.2 MiB/s
+Downloading llama-b1280-ubuntu-rocm-gfx1151-x64.zip:  50.0% (222.0 MiB/443.8 MiB) at 144.9 MiB/s
+Downloading llama-b1280-ubuntu-rocm-gfx1151-x64.zip:  75.0% (333.0 MiB/443.8 MiB) at 152.9 MiB/s
+Downloading llama-b1280-ubuntu-rocm-gfx1151-x64.zip: 100.0% (443.8 MiB/443.8 MiB) at 157.0 MiB/s
+[llama-prebuilt] downloaded prebuilt archive llama-b1280-ubuntu-rocm-gfx1151-x64.zip without a published sha256; relying on install validation
+[llama-prebuilt] staged prebuilt validation succeeded for llama-b1280-ubuntu-rocm-gfx1151-x64.zip
+[llama-prebuilt] activating staged install /home/auroraai/.unsloth/.staging/llama.cpp.staging-hd83ywj2 -> /home/auroraai/.unsloth/llama.cpp
+[llama-prebuilt] activated staged install at /home/auroraai/.unsloth/llama.cpp
+[llama-prebuilt] confirming activated install tree at /home/auroraai/.unsloth/llama.cpp
+[llama-prebuilt] activated install tree confirmed at /home/auroraai/.unsloth/llama.cpp
+  llama.cpp      prebuilt installed and validated
+                 installed release: unslothai/llama.cpp@b9334 + lemonade@b1280
+                 llama.cpp install dir: /home/auroraai/.unsloth/llama.cpp
+  ────────────────────────────────────────────────────
+  Unsloth Studio Installed
+  ────────────────────────────────────────────────────
+  launch         unsloth studio -p 8888
+                 (add -H 0.0.0.0 to allow network / cloud access)
+
+                 Created Unsloth Studio shortcut
+
+  Unsloth Studio installed!
+  ────────────────────────────────────────────────────
+
+  launch         manual commands:
+                 unsloth studio -p 8888
+                 or activate env first:
+                 source '/home/auroraai/.unsloth/studio/unsloth_studio/bin/activate'
+                 unsloth studio -p 8888
+                 (add -H 0.0.0.0 to allow network / cloud access)
+
