@@ -1046,7 +1046,7 @@ Every entry here started as a real failure on a real run on the hardware this gu
 
 ## Credits
 
-Built and tested on a Corsair AI Workstation 300 by [@h34v3nzc0dex](https://github.com/h34v3nzc0dex) with the assistance of Claude (Anthropic). Every patch in this repo was discovered by hitting a real failure on a real run and digging until we understood the root cause.
+Built and tested on a Corsair AI Workstation 300 by [@h34v3nzc0dex](https://github.com/h34v3nzc0dex) ([ORCID 0009-0000-2537-1578](https://orcid.org/0009-0000-2537-1578)) with the assistance of Claude (Anthropic). Every patch in this repo was discovered by hitting a real failure on a real run and digging until we understood the root cause.
 
 The community resources that got us most of the way:
 
