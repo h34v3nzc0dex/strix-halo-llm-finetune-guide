@@ -2,7 +2,7 @@
 
 A reproducible recipe for fine-tuning Qwen3.5-27B (or larger) hybrid LLMs on a single AMD Strix Halo APU (Ryzen AI MAX+ 395, Radeon 8060S, gfx1151) with 128 GB of unified memory — including the patches, system tuning, and out-of-process evaluation orchestrator that make multi-day training runs survivable on consumer hardware.
 
-> **Status:** Tested on a Corsair AI Workstation 300 (Sixunited AXB35-02 board) running Ubuntu 24.04 LTS, mainline kernel 6.19.14, ROCm 7.13 nightly. The same recipe should work on Framework Desktop, GMKtec EVO-X2, FEVM FA-EX9, Bosgame M5 — any AXB35-02 / Strix Halo system.
+> **Status:** Tested on a Corsair AI Workstation 300 (Sixunited AXB35-02 board) running Ubuntu 24.04 LTS, mainline kernel 6.19.14 (as tested; 6.19 now EOL — use 7.0.x, see [Upgrade-path gotchas](#upgrade-path-gotchas)), ROCm 7.13 nightly. The same recipe should work on Framework Desktop, GMKtec EVO-X2, FEVM FA-EX9, Bosgame M5 — any AXB35-02 / Strix Halo system.
 
 ---
 
@@ -87,7 +87,7 @@ This leaves ROCm at `/opt/rocm-7.1.0/`. The Python wheels you'll install in Step
 | PyTorch | **2.11.0+rocm7.13.0a*** | gfx1151 nightly index | bf16 LoRA + AOTriton SDPA work natively |
 | flash-linear-attention | **0.5.1 from source, patched** | github.com/fla-org/flash-linear-attention | GatedDeltaNet (Qwen3.5) needs Triton kernels |
 | bitsandbytes | **0.50.0.dev0 built from source for gfx1151** | github.com/bitsandbytes-foundation/bitsandbytes | PyPI wheels ship zero ROCm binaries |
-| llama.cpp | b867+ rebuilt with `--gcc-install-dir` flag | github.com/ggml-org/llama.cpp | For inference of fine-tuned + base models |
+| llama.cpp | **b9296** (as built; b867+ fine for plain inference) rebuilt with `--gcc-install-dir` flag | github.com/ggml-org/llama.cpp | Inference of fine-tuned + base models; `--spec-type draft-mtp` needs **b9180+** (see [§6b](#speculative-decoding-with-qwen36-mtp-16-decode-speedup-on-gfx1151)) |
 | transformers / trl / peft | 5.4 / 0.29.1 / 0.18.1 | PyPI | Stable for our patterns |
 
 ---
@@ -130,7 +130,8 @@ The orchestrator is bash. The training and eval scripts are Python. They never c
 ```bash
 # 0. Install prereqs (build tools + ROCm 7.1 apt repo) — see Prerequisites above
 
-# 1. Install kernel 6.19+ from kernel.ubuntu.com/mainline/v6.19.14/amd64
+# 1. Install latest stable mainline kernel from kernel.ubuntu.com/mainline/ — 6.19.14 was tested,
+#    but 6.19 is EOL (2026-04-22); target 7.0.x (gfx1151 floor 6.18.4). See Step 1 / Upgrade-path gotchas.
 # Apply scripts/fix-kernel-run-parts.py to the .debs before installing
 # (full repack ritual is in Step 1 below)
 
@@ -562,7 +563,7 @@ Per-flag rationale:
 - **`--no-mmap`** is the gfx1151 gotcha — mmap-only loading triggers a ~30 min GPU page-table setup wall on the unified-memory path. Either `--no-mmap` *or* `--mmap --direct-io` together work; mmap alone hangs. Documented across multiple Strix Halo issues; not specific to llama.cpp.
 - **`--fit off`** disables llama-server's auto-fit (which also triggers the HSA null pointer bug on some ROCm 7.1.x configurations; we kept it off across the board).
 - **`--reasoning-budget 0`** disables the thinking block. **Strongly recommended** for tool-call workflows — Qwen3.5/3.6's native chat template emits tool calls inside the `<thinking>` block, and if the reasoning budget runs out mid-call the response stream looks empty to the client. Leave thinking on only for pure-chat-no-tools workloads where reasoning visibly helps.
-- **Sampling: `--temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.00`** is the unsloth-recommended set for Qwen3.5/3.6 with reasoning off. Their per-model sampling guidance is worth following — meaningfully better than llama.cpp's defaults for coherence on this family. See unsloth's [Qwen3.6 docs](https://docs.unsloth.ai/models/qwen3.6-how-to-run-and-fine-tune) for the per-mode (reasoning vs non-reasoning) recommendations.
+- **Sampling: `--temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.00`** is the unsloth-recommended set for Qwen3.5/3.6 with reasoning off. Their per-model sampling guidance is worth following — meaningfully better than llama.cpp's defaults for coherence on this family. See unsloth's [Qwen3.6 docs](https://docs.unsloth.ai/models/qwen3.6) for the per-mode (reasoning vs non-reasoning) recommendations.
 - **KV cache quantization (`--cache-type-k q4_0 --cache-type-v q4_0`)** is reported to give measurable memory-bandwidth gains at long context with minimal quality loss on Qwen3.5/3.6. We haven't benched it ourselves yet on this hardware (production is at the F16 cache default, 8k context where the bandwidth pressure is lower) — adding when we do. If you're running long-context (32k+) chat workloads, it's worth trying.
 
 For tool-call agents specifically (Continue, Codex CLI, Roo, OpenClaw, aichat, etc.), also note:
@@ -981,11 +982,11 @@ This guide pins specific versions (kernel, ROCm/PyTorch, llama.cpp, FLA, the HF 
 ### ROCm + PyTorch (nightly)
 
 - **torch 2.10.0 → 2.11.0 (rocm7.13 nightly).** Clean bump — the editable FLA install and the source-built bitsandbytes both survived it. Two things to keep in mind: always install from the per-arch index `https://rocm.nightlies.amd.com/v2-staging/gfx1151/` (default PyPI pulls CUDA wheels), and from 2.10+ `expandable_segments:True` works on HIP (you can drop `max_split_size_mb`). See [Step 3](#step-3--pytorch-nightly--rocm).
-- **gfx1151 is still not in any GA channel.** We checked: ROCm **7.2.3** GA and the stable `torch 2.12+rocm7.2` wheels do **not** carry working gfx1151 kernels (they fail with `HIP error: invalid device function`). Stay on the per-arch nightly index. A less-churny `…/v2/gfx1151/` track now exists alongside `v2-staging`.
+- **gfx1151 is still not in any GA channel.** We checked: ROCm **7.2.3** GA and the stable `torch 2.12+rocm7.2` wheels do **not** carry working gfx1151 kernels (they fail with `HIP error: invalid device function`). Stay on the per-arch nightly index — every install command in this guide uses `…/v2-staging/gfx1151/`. (A `…/v2/gfx1151/` track also exists; we haven't validated it carries the same date-stamped `2.11.0+rocm7.13.0a*` wheels, so we don't use it.)
 
 ### llama.cpp
 
-- **b867 → b9296.** Rebuilding **silently reset two local patches to upstream** — re-apply both after *every* pull/rebuild: (1) the `common/chat.cpp` Codex tool-type skip (built in [Step 6](#step-6--llamacpp-hip-build-for-inference)), and (2) the `convert_lora_to_gguf.py` Qwen3.5 V-head fix (Step 7c). We lost the second one in a rebuild and it silently broke the eval path for days before anyone noticed. Unchanged across the bump: `--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13` is required on Ubuntu 24.04, `GGML_HIP_ROCWMMA_FATTN=OFF` on gfx1151, and moving the build tree breaks the binary's `RUNPATH`.
+- **b867 → b9296.** Rebuilding **silently reset our local `convert_lora_to_gguf.py` Qwen3.5 V-head patch to upstream** — re-apply it after *every* pull/rebuild (Step 7c). We lost it in a rebuild once and it silently broke the eval path for days before anyone noticed. Unchanged across the bump: `--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13` is required on Ubuntu 24.04, `GGML_HIP_ROCWMMA_FATTN=OFF` on gfx1151, and moving the build tree breaks the binary's `RUNPATH`.
 
 ### flash-linear-attention
 
@@ -993,7 +994,7 @@ This guide pins specific versions (kernel, ROCm/PyTorch, llama.cpp, FLA, the HF 
 
 ### HF training stack
 
-- **trl 0.x → 1.x is a major, breaking bump** (packing-strategy rename, changed `vllm_mode` default) — validate your `SFTConfig` against the new release before upgrading.
+- **trl 0.29.1 (last 0.x) → 1.x is a major, breaking bump** (packing-strategy rename `bfd-requeue`→`bfd_split`, changed `vllm_mode` default). This guide is pinned to 0.29.1 (stack table); validate your `SFTConfig` against 1.x before moving off it.
 - **transformers < 5.2 → 5.2+** requires lazy shard loading for 27B-class models; older versions mmap all shards at once and OOM on unified memory.
 
 ### Re-apply after any rebuild/pull
@@ -1001,7 +1002,7 @@ This guide pins specific versions (kernel, ROCm/PyTorch, llama.cpp, FLA, the HF 
 One place to check whenever you bump these:
 
 - **FLA:** `fla_repatch.py`
-- **llama.cpp:** the `common/chat.cpp` Codex-skip patch **and** the `convert_lora_to_gguf.py` Qwen3.5 V-head patch
+- **llama.cpp:** the `convert_lora_to_gguf.py` Qwen3.5 V-head patch (Step 7c)
 
 ---
 
@@ -1092,7 +1093,7 @@ The community resources that got us most of the way:
 - [AMD MI300A system optimization (official)](https://instinct.docs.amd.com/projects/amdgpu-docs/en/latest/system-optimization/mi300a.html) — our north-star tuning doc
 - [Strix Halo Wiki](https://strixhalo.wiki) — cross-OEM firmware and kernel-param notes
 - [Framework community fine-tuning thread](https://community.frame.work/t/finetuning-llms-on-strix-halo-full-lora-and-qlora-on-gemma-3-qwen-3-and-gpt-oss-20b/76986)
-- [kyuz0/amd-strix-halo-vllm-toolboxes](https://github.com/kyuz0/amd-strix-halo-toolboxes) — vLLM-focused, but the kernel parameter notes were a useful sanity check
+- [kyuz0/amd-strix-halo-toolboxes](https://github.com/kyuz0/amd-strix-halo-toolboxes) — llama.cpp-focused (pre-built Vulkan + ROCm containers), but the kernel parameter notes were a useful sanity check
 
 If this guide helps you, [open an issue](https://github.com/h34v3nzc0dex/strix-halo-llm-finetune-guide/issues) with what worked, what didn't, and what hardware you're on. We'll fold it back in.
 
