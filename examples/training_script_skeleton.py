@@ -15,7 +15,8 @@ Tested against:
     bitsandbytes built from source for ROCm gfx1151
     PyTorch 2.11.0+rocm7.13 nightly
 
-Usage (called by train_orchestrator.sh, so all args must be supported):
+Usage (the orchestrator calls this; note it does NOT pass --base-model or
+--train-data, so those default in main() — set TRAIN_DATA or edit the defaults):
 
     python3 train.py \\
         --base-model Qwen/Qwen3.5-27B \\
@@ -72,8 +73,10 @@ def load_jsonl_dataset(path, tokenizer, max_seq_length):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-model", required=True)
-    parser.add_argument("--train-data", required=True)
+    # The orchestrator does NOT pass these two — they default here (set the
+    # TRAIN_DATA env var, or edit the defaults, for your model/dataset).
+    parser.add_argument("--base-model", default="Qwen/Qwen3.5-27B")
+    parser.add_argument("--train-data", default=os.environ.get("TRAIN_DATA", "data/train.jsonl"))
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-seq-length", type=int, default=8192)
 

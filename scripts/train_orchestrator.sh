@@ -53,6 +53,7 @@ while [[ $# -gt 0 ]]; do
         --epochs) EPOCHS="$2"; shift 2;;
         --grad-accum) GRAD_ACCUM="$2"; shift 2;;
         --base-model) BASE_MODEL="$2"; shift 2;;
+        --base-gguf) BASE_GGUF="$2"; shift 2;;
         -h|--help)
             cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
@@ -71,11 +72,15 @@ Options (with current defaults):
   --epochs N           Fallback when --max-steps is not used (default: $EPOCHS)
   --grad-accum N       Gradient accumulation steps (default: $GRAD_ACCUM)
   --base-model NAME    HF model id passed through to eval (default: $BASE_MODEL)
+  --base-gguf PATH     Base-model GGUF for EVAL_METHOD=llama (or set BASE_GGUF env;
+                       default is a placeholder — eval fails until you set it)
   -h, --help           This help.
 
 Environment:
   DRY_RUN=1            Print the training command instead of running it.
   TG_DRY_RUN=1         Print Telegram messages to stderr instead of sending.
+  EVAL_METHOD=llama|hf Eval path (default: llama; see README §7b).
+  BASE_GGUF=PATH       Base-model GGUF for the llama eval path (or use --base-gguf).
 
 The training script at scripts/\$TRAIN_SCRIPT_NAME (currently $TRAIN_SCRIPT_NAME)
 must accept: --bf16-lora --no-eval --output-dir --lora-r --lora-alpha
