@@ -81,7 +81,7 @@ This leaves ROCm at `/opt/rocm-7.1.0/`. The Python wheels you'll install in Step
 
 | Layer | Version | Source | Why this version |
 |---|---|---|---|
-| Linux kernel | **6.19.14 mainline** | Ubuntu kernel.ubuntu.com | KFD driver fixes for gfx1151; older kernels hit fence/dma_buf sync bugs |
+| Linux kernel | **6.19.14 mainline** (as tested; 6.19 now EOL — use 7.0.x, see [Upgrade-path gotchas](#upgrade-path-gotchas)) | Ubuntu kernel.ubuntu.com | KFD driver fixes for gfx1151; older kernels hit fence/dma_buf sync bugs |
 | ROCm system | **7.1.0** | Radeon repo (`repo.radeon.com/rocm/apt/7.1`) | `rocm-cmake`, `hipcc`, `hipBLAS` etc. for builds |
 | ROCm Python wheels | **7.13 nightly** | `https://rocm.nightlies.amd.com/v2-staging/gfx1151/` | Native gfx1151 — no `HSA_OVERRIDE_GFX_VERSION` needed |
 | PyTorch | **2.11.0+rocm7.13.0a*** | gfx1151 nightly index | bf16 LoRA + AOTriton SDPA work natively |
@@ -186,6 +186,8 @@ If any of those steps don't make sense, keep reading.
 ## Step 1 — Kernel 6.19.14 (mainline)
 
 Recent gfx1151 KFD driver fixes are in mainline kernels only. Distros lag. Use Ubuntu's mainline build.
+
+> **6.19.14 is the version we originally tested on, but the 6.19 series reached EOL 2026-04-22.** It still runs fine, but for a fresh install target the latest stable mainline (7.0.x) — the floor for gfx1151 is mainline ≥ 6.18.4 / Ubuntu 24.04 HWE 6.17. The install steps below are identical for any version; just swap the `v6.19.14` in the URLs. See [Upgrade-path gotchas](#upgrade-path-gotchas).
 
 ### Install
 
@@ -964,6 +966,42 @@ The failure modes that cost us the most time, indexed. Each links to the step wi
 | Eval storms the box — every checkpoint pegs all cores for 5–10 min | The HF eval path triggers a TLB-shootdown IPI storm on no-`INVLPGB` Strix Halo | Use the `llama-perplexity` eval path instead of the HF path | [Step 7b](#step-7b--storm-free-eval-via-llama-perplexity) |
 | `--spec-type draft-mtp` pegs a CPU core, never dispatches to GPU | Either build is older than `b9180` (the GPU draft-mtp dispatch isn't wired) OR you're using `llama-cli` instead of `llama-server` | Build llama.cpp at `b9180+`, invoke via `llama-server`. Confirm server logs show `gpu_layers=-1, backend_sampling=1`. | [Step 6b](#speculative-decoding-with-qwen36-mtp-16-decode-speedup-on-gfx1151) |
 | `llama-server` fails to start after you moved the build tree | cmake bakes the build-dir absolute path into the binary's `RUNPATH`; moving the tree leaves the binary pointing at a path that no longer exists | Rebuild in the final location (cleanest), or `patchelf --set-rpath <new path>` on the binaries + shared libs | [Step 6](#step-6--llamacpp-hip-build-for-inference) |
+
+---
+
+## Upgrade-path gotchas
+
+This guide pins specific versions (kernel, ROCm/PyTorch, llama.cpp, FLA, the HF stack). When you move off those pins, here's what actually broke for us and the fix — every entry is a transition we ran on this hardware, not speculation.
+
+### Kernel
+
+- **6.19.14 → 7.0.9 (mainline).** The 6.19 series went **EOL 2026-04-22**, so a fresh install should target the latest stable mainline (7.0.x). The `run-parts` double-directory `.deb` bug is **still present on the 7.0 `.deb`s** (the same six maintainer scripts) — re-run `scripts/fix-kernel-run-parts.py` on them exactly as in [Step 1](#step-1--kernel-61914-mainline). We validated 7.0.9 on gfx1151 (ROCm matmul + 128 GB GTT auto-size, no amdgpu faults, no step-time regression vs 6.19).
+- **Floor.** AMD's stated minimum for gfx1151 is mainline **≥ 6.18.4** (or the Ubuntu 24.04 HWE **6.17** stack). Below that, the symptom is `torch.cuda.synchronize()` hanging with the GPU pinned at 100%, or an HSA page-fault at model load — the KFD/amdgpu queue+fence fixes for this silicon aren't present, so the ring never completes.
+
+### ROCm + PyTorch (nightly)
+
+- **torch 2.10.0 → 2.11.0 (rocm7.13 nightly).** Clean bump — the editable FLA install and the source-built bitsandbytes both survived it. Two things to keep in mind: always install from the per-arch index `https://rocm.nightlies.amd.com/v2-staging/gfx1151/` (default PyPI pulls CUDA wheels), and from 2.10+ `expandable_segments:True` works on HIP (you can drop `max_split_size_mb`). See [Step 3](#step-3--pytorch-nightly--rocm).
+- **gfx1151 is still not in any GA channel.** We checked: ROCm **7.2.3** GA and the stable `torch 2.12+rocm7.2` wheels do **not** carry working gfx1151 kernels (they fail with `HIP error: invalid device function`). Stay on the per-arch nightly index. A less-churny `…/v2/gfx1151/` track now exists alongside `v2-staging`.
+
+### llama.cpp
+
+- **b867 → b9296.** Rebuilding **silently reset two local patches to upstream** — re-apply both after *every* pull/rebuild: (1) the `common/chat.cpp` Codex tool-type skip (built in [Step 6](#step-6--llamacpp-hip-build-for-inference)), and (2) the `convert_lora_to_gguf.py` Qwen3.5 V-head fix (Step 7c). We lost the second one in a rebuild and it silently broke the eval path for days before anyone noticed. Unchanged across the bump: `--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13` is required on Ubuntu 24.04, `GGML_HIP_ROCWMMA_FATTN=OFF` on gfx1151, and moving the build tree breaks the binary's `RUNPATH`.
+
+### flash-linear-attention
+
+- **0.4.2 → 0.5.0/0.5.1.** Re-run `fla_repatch.py` after every FLA pull (it's idempotent). The historical patches (num_warps cap, the `cumsum.py` wrapper) were only needed on Triton 3.4 / ROCm 7.1 — on Triton 3.6 / ROCm 7.13 nightly, **vanilla 0.5.0 works** without them.
+
+### HF training stack
+
+- **trl 0.x → 1.x is a major, breaking bump** (packing-strategy rename, changed `vllm_mode` default) — validate your `SFTConfig` against the new release before upgrading.
+- **transformers < 5.2 → 5.2+** requires lazy shard loading for 27B-class models; older versions mmap all shards at once and OOM on unified memory.
+
+### Re-apply after any rebuild/pull
+
+One place to check whenever you bump these:
+
+- **FLA:** `fla_repatch.py`
+- **llama.cpp:** the `common/chat.cpp` Codex-skip patch **and** the `convert_lora_to_gguf.py` Qwen3.5 V-head patch
 
 ---
 
