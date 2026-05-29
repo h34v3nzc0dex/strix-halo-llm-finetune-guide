@@ -1,0 +1,29 @@
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           pp512 |      1000.30 ± 11.73 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           tg128 |         49.46 ± 0.13 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           pp512 |        993.68 ± 9.14 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           tg128 |         49.57 ± 0.10 |
+
+build: 1acee6b (187)
+
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |          pp2048 |        955.76 ± 5.20 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           tg128 |         49.37 ± 0.10 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d4196 |        842.63 ± 2.20 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |   tg128 @ d4196 |         43.78 ± 0.20 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d8392 |        736.52 ± 4.49 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |   tg128 @ d8392 |         38.96 ± 0.03 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |          pp2048 |        971.83 ± 2.02 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           tg128 |         49.54 ± 0.11 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d4196 |       866.00 ± 11.16 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |   tg128 @ d4196 |         48.62 ± 0.26 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d8392 |        809.03 ± 0.80 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |   tg128 @ d8392 |         46.59 ± 0.02 |
+
+build: 1acee6b (187)

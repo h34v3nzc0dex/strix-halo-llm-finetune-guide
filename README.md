@@ -921,6 +921,8 @@ Same pattern on Qwen3.6-35B-A3B Q4 MoE — +21% at d=0, +89% at d=4196, **+145% 
 
 Step 6 above uses `-DGGML_HIP_ROCWMMA_FATTN=OFF` for this reason. Raw A/B + reproduction script: [`rocwmma-fattn-sweep/`](rocwmma-fattn-sweep/). The strixhalo.wiki [ROCWMMA recommendation](https://strixhalo.wiki/AI/llamacpp-with-ROCm#rocwmma) was correct; this is the hardware evidence.
 
+> **Re-validated on kernel 7.0.9 (2026-05-29).** The numbers above were measured on 6.19.14. After upgrading the rig to mainline 7.0.9 (6.19 is EOL), we re-ran the identical sweep (same binaries/commit, only the kernel differing): pp2048 d8392 came out 120.9/284.1 t/s (2.35×) for the dense model and 334.5/809.0 (2.42×) for the MoE — within noise of the 6.19.14 figures. The 6.19.14→7.0.9 move is throughput-neutral here; the posted numbers stand. Full 7.0.9 logs: [`rocwmma-fattn-sweep/revalidation-7.0.9/`](rocwmma-fattn-sweep/revalidation-7.0.9/).
+
 ### ROCm vs Vulkan — backend selection depends on precision
 
 Inference on Strix Halo can run through either of two llama.cpp backends, and **the right choice is not the same for every workload**:

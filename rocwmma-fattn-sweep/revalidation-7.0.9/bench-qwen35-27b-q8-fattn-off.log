@@ -1,0 +1,29 @@
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           pp512 |        323.23 ± 3.57 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           tg128 |          7.62 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           pp512 |        324.27 ± 3.02 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           tg128 |          7.64 ± 0.01 |
+
+build: 1acee6b (187)
+
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |          pp2048 |        314.15 ± 0.86 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           tg128 |          7.61 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d4196 |        278.01 ± 1.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |   tg128 @ d4196 |          7.21 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d8392 |        249.72 ± 0.28 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |   tg128 @ d8392 |          6.79 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |          pp2048 |        317.46 ± 0.61 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           tg128 |          7.66 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d4196 |        283.48 ± 0.31 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |   tg128 @ d4196 |          7.59 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d8392 |        284.06 ± 0.08 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |   tg128 @ d8392 |          7.49 ± 0.00 |
+
+build: 1acee6b (187)

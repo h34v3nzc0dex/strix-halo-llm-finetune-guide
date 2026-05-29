@@ -4,6 +4,8 @@
 
 **Turn it OFF.** On gfx1151 at any non-trivial prompt or context depth, the rocwmma flash-attention implementation is dramatically slower than llama.cpp's runtime FA. At a typical 8k context the gap reaches **~2.4× on prefill** for both dense and MoE models. Decode (TG) is flat — TG is memory-bandwidth-bound, the FA implementation doesn't matter. PSA from the [strix-halo guide](../README.md): **build with `-DGGML_HIP_ROCWMMA_FATTN=OFF`**. The strixhalo.wiki [ROCWMMA recommendation](https://strixhalo.wiki/AI/llamacpp-with-ROCm#rocwmma) is correct; this is the supporting hardware evidence.
 
+> **Re-validated on kernel 7.0.9** (2026-05-29) — the numbers below are from 6.19.14; the identical sweep re-run on 7.0.9 (same binaries/commit, only the kernel differing) reproduces the ~2.4× within noise. Comparison + raw 7.0.9 logs: [`revalidation-7.0.9/`](revalidation-7.0.9/).
+
 ## Test rig
 
 - Radeon 8060S / gfx1151 / Ryzen AI MAX+ 395 / 128 GiB unified

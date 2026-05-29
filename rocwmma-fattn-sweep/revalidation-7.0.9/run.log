@@ -1,0 +1,133 @@
+════════════════════════════════════════════════════════════
+  qwen35-27b-q8  FATTN=ON    ->  bench-qwen35-27b-q8-fattn-on.log
+════════════════════════════════════════════════════════════
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           pp512 |        325.78 ± 1.39 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           tg128 |          7.62 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           pp512 |        304.60 ± 2.65 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           tg128 |          7.65 ± 0.00 |
+
+build: 1acee6b (187)
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |          pp2048 |        310.03 ± 0.61 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           tg128 |          7.64 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d4196 |        285.40 ± 0.51 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |   tg128 @ d4196 |          7.21 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d8392 |        257.99 ± 0.17 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |   tg128 @ d8392 |          6.80 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |          pp2048 |        279.34 ± 0.47 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           tg128 |          7.64 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d4196 |        166.60 ± 0.12 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |   tg128 @ d4196 |          7.47 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d8392 |        120.93 ± 0.16 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |   tg128 @ d8392 |          7.30 ± 0.00 |
+
+build: 1acee6b (187)
+
+════════════════════════════════════════════════════════════
+  qwen35-27b-q8  FATTN=OFF    ->  bench-qwen35-27b-q8-fattn-off.log
+════════════════════════════════════════════════════════════
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           pp512 |        323.23 ± 3.57 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           tg128 |          7.62 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           pp512 |        324.27 ± 3.02 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           tg128 |          7.64 ± 0.01 |
+
+build: 1acee6b (187)
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |          pp2048 |        314.15 ± 0.86 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |           tg128 |          7.61 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d4196 |        278.01 ± 1.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |   tg128 @ d4196 |          7.21 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d8392 |        249.72 ± 0.28 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  0 |    0 |   tg128 @ d8392 |          6.79 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |          pp2048 |        317.46 ± 0.61 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |           tg128 |          7.66 ± 0.00 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d4196 |        283.48 ± 0.31 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |   tg128 @ d4196 |          7.59 ± 0.01 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d8392 |        284.06 ± 0.08 |
+| qwen35 27B Q8_0                |  26.62 GiB |    26.90 B | ROCm       |  99 |  1 |    0 |   tg128 @ d8392 |          7.49 ± 0.00 |
+
+build: 1acee6b (187)
+
+════════════════════════════════════════════════════════════
+  qwen36-35b-a3b-q4  FATTN=ON    ->  bench-qwen36-35b-a3b-q4-fattn-on.log
+════════════════════════════════════════════════════════════
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           pp512 |      1011.95 ± 12.13 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           tg128 |         49.29 ± 0.10 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           pp512 |        925.86 ± 7.99 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           tg128 |         49.50 ± 0.10 |
+
+build: 1acee6b (187)
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |          pp2048 |        973.48 ± 3.95 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           tg128 |         49.39 ± 0.13 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d4196 |        845.31 ± 3.23 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |   tg128 @ d4196 |         43.80 ± 0.22 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d8392 |        743.79 ± 2.53 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |   tg128 @ d8392 |         39.04 ± 0.00 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |          pp2048 |        799.66 ± 4.36 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           tg128 |         49.47 ± 0.11 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d4196 |        459.39 ± 2.29 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |   tg128 @ d4196 |         46.89 ± 0.25 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d8392 |        334.52 ± 1.06 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |   tg128 @ d8392 |         44.17 ± 0.02 |
+
+build: 1acee6b (187)
+
+════════════════════════════════════════════════════════════
+  qwen36-35b-a3b-q4  FATTN=OFF    ->  bench-qwen36-35b-a3b-q4-fattn-off.log
+════════════════════════════════════════════════════════════
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           pp512 |      1000.30 ± 11.73 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           tg128 |         49.46 ± 0.13 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           pp512 |        993.68 ± 9.14 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           tg128 |         49.57 ± 0.10 |
+
+build: 1acee6b (187)
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 131072 MiB):
+  Device 0: Radeon 8060S Graphics, gfx1151 (0x1151), VMM: no, Wave Size: 32, VRAM: 131072 MiB
+| model                          |       size |     params | backend    | ngl | fa | mmap |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -: | ---: | --------------: | -------------------: |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |          pp2048 |        955.76 ± 5.20 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |           tg128 |         49.37 ± 0.10 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d4196 |        842.63 ± 2.20 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |   tg128 @ d4196 |         43.78 ± 0.20 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |  pp2048 @ d8392 |        736.52 ± 4.49 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  0 |    0 |   tg128 @ d8392 |         38.96 ± 0.03 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |          pp2048 |        971.83 ± 2.02 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |           tg128 |         49.54 ± 0.11 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d4196 |       866.00 ± 11.16 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |   tg128 @ d4196 |         48.62 ± 0.26 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |  pp2048 @ d8392 |        809.03 ± 0.80 |
+| qwen35moe 35B.A3B Q4_K - Medium |  20.60 GiB |    34.66 B | ROCm       |  99 |  1 |    0 |   tg128 @ d8392 |         46.59 ± 0.02 |
+
+build: 1acee6b (187)
+
+DONE — logs:
+-rw-rw-r-- 1 auroraai auroraai 3035 May 29 13:51 /srv/aurora-ai/rocwmma-fattn-test/bench-qwen35-27b-q8-fattn-off.log
+-rw-rw-r-- 1 auroraai auroraai 3035 May 29 13:39 /srv/aurora-ai/rocwmma-fattn-test/bench-qwen35-27b-q8-fattn-on.log
+-rw-rw-r-- 1 auroraai auroraai 3051 May 29 13:57 /srv/aurora-ai/rocwmma-fattn-test/bench-qwen36-35b-a3b-q4-fattn-off.log
+-rw-rw-r-- 1 auroraai auroraai 3051 May 29 13:54 /srv/aurora-ai/rocwmma-fattn-test/bench-qwen36-35b-a3b-q4-fattn-on.log
