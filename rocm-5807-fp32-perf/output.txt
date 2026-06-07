@@ -1,0 +1,11 @@
+=== rocm#5807 matmul TFLOPS, NIGHTLY stack (torch2.11+rocm7.13.0a), 2026-06-07T07:32:48-06:00 ===
+torch: 2.11.0+rocm7.13.0a20260506 | gpu: Radeon 8060S Graphics
+  float16 : 33.6 TFLOPS
+  bfloat16: 29.5 TFLOPS
+  float32 : 3.1 TFLOPS
+
+=== same on GA channel (torch2.11+rocm7.13.0, repo.amd.com) ===
+torch: 2.11.0+rocm7.13.0 | gpu: Radeon 8060S Graphics
+  float16 : 33.7 TFLOPS
+  bfloat16: 29.5 TFLOPS
+  float32 : 3.0 TFLOPS

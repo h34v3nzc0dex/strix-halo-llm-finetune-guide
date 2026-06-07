@@ -1,0 +1,2 @@
+bnb: 0.50.0.dev0 (built-from-source gfx1151) | torch 2.11.0+rocm7.13.0a20260506 | Radeon 8060S Graphics
+  4bit dequantize 8192x8192: 0.89 ms/iter, ~152 GB/s effective

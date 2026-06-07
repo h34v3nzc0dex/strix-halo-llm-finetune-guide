@@ -1,0 +1,10 @@
+=== fla#913 GDN fwd+bwd on gfx1151, 2026-06-07T07:32:34-06:00 ===
+--- run 1 ---
+torch: 2.11.0+rocm7.13.0a20260506 | triton: 3.6.0 | gpu: Radeon 8060S Graphics
+RESULT: fwd+bwd OK, no misaligned address. grad shapes (1, 8192, 16, 128) (1, 8192, 16, 128) (1, 8192, 16, 128)
+--- run 2 ---
+torch: 2.11.0+rocm7.13.0a20260506 | triton: 3.6.0 | gpu: Radeon 8060S Graphics
+RESULT: fwd+bwd OK, no misaligned address. grad shapes (1, 8192, 16, 128) (1, 8192, 16, 128) (1, 8192, 16, 128)
+--- run 3 ---
+torch: 2.11.0+rocm7.13.0a20260506 | triton: 3.6.0 | gpu: Radeon 8060S Graphics
+RESULT: fwd+bwd OK, no misaligned address. grad shapes (1, 8192, 16, 128) (1, 8192, 16, 128) (1, 8192, 16, 128)
