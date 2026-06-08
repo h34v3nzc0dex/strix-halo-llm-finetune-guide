@@ -1,11 +1,29 @@
-=== therock#5314 hipBLASLt sweep on gfx1151 (Ubuntu 24.04, iommu=pt, ROCm7.13), 2026-06-07T07:32:56-06:00 ===
+=== therock#5314 NT/NN/TN layout sweep on gfx1151 (Ubuntu 24.04, iommu=pt, ROCm7.13), 2026-06-08T06:38:35-06:00 ===
 ### TORCH_BLAS_PREFER_HIPBLASLT=0 (rocBLAS path)
 HIPBLASLT= 0 | torch 2.11.0+rocm7.13.0a20260506
-  2048^3  fp16 27.9  bf16 31.0 TFLOPS
-  4096^3  fp16 32.1  bf16 29.7 TFLOPS
-  8192^3  fp16 24.0  bf16 24.7 TFLOPS
+  [NT] fwd  y=x@W.T
+      2048^3  fp16  36.1  bf16  36.0 TFLOPS
+      4096^3  fp16  21.8  bf16  21.8 TFLOPS
+      8192^3  fp16  24.9  bf16  25.2 TFLOPS
+  [NN] dgrad dX=dY@W
+      2048^3  fp16  27.5  bf16  31.0 TFLOPS
+      4096^3  fp16  32.8  bf16  29.2 TFLOPS
+      8192^3  fp16  23.7  bf16  24.2 TFLOPS
+  [TN] wgrad dW=dY.T@x
+      2048^3  fp16  35.6  bf16  34.7 TFLOPS
+      4096^3  fp16  39.9  bf16  40.5 TFLOPS
+      8192^3  fp16  30.9  bf16  31.2 TFLOPS
 ### TORCH_BLAS_PREFER_HIPBLASLT=1 (hipBLASLt path)
 HIPBLASLT= 1 | torch 2.11.0+rocm7.13.0a20260506
-  2048^3  fp16 37.2  bf16 36.4 TFLOPS
-  4096^3  fp16 35.2  bf16 36.7 TFLOPS
-  8192^3  fp16 32.2  bf16 32.7 TFLOPS
+  [NT] fwd  y=x@W.T
+      2048^3  fp16  36.9  bf16  35.5 TFLOPS
+      4096^3  fp16  32.4  bf16  34.0 TFLOPS
+      8192^3  fp16  34.5  bf16  34.1 TFLOPS
+  [NN] dgrad dX=dY@W
+      2048^3  fp16  34.3  bf16  35.1 TFLOPS
+      4096^3  fp16  35.5  bf16  35.2 TFLOPS
+      8192^3  fp16  30.6  bf16  31.0 TFLOPS
+  [TN] wgrad dW=dY.T@x
+      2048^3  fp16  23.6  bf16  23.8 TFLOPS
+      4096^3  fp16  16.3  bf16  16.3 TFLOPS
+      8192^3  fp16   8.4  bf16   8.4 TFLOPS
