@@ -35,3 +35,18 @@ MoE, while the dense path still prefers the wider 128 tiles. Worth gating the tu
 
 (Couldn't bench the 122B Q6_K we have — at 95 GB it wouldn't GPU-offload within headroom on
 128 GB unified memory and fell back to CPU, so we used Q4 MoE, which also matches the issue's quant.)
+
+## Follow-up: PR #21344 (dense-aware gating) validated (2026-06-08)
+@pedapudi's [PR #21344](https://github.com/ggml-org/llama.cpp/pull/21344) gates the RDNA3.5
+tiling so dense models don't pay for it. A/B on the same harness — it keeps the MoE win and
+removes the dense regression:
+
+| model | stock | unconditional | **PR #21344** |
+|---|---|---|---|
+| A3B Q4 (MoE) pp2048 | 1016.9 | 1317.2 | **1353.2** |
+| A3B Q4 (MoE) pp512 | 1071.6 | 1367.6 | 1142.6 *(±136, noisy)* |
+| 27B Q4 (dense) pp2048 | 322.5 | 309.8 (−3.9%) | **338.4** |
+| 27B Q4 (dense) pp512 | 333.5 | 311.5 (−6.6%) | **342.6** |
+
+MoE prefill win preserved (pp2048 +33% vs stock), dense regression gone — dense is now
+slightly *above* stock. (PR was closed; approach may have moved to a successor.)

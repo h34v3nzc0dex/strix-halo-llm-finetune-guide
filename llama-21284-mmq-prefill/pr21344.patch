@@ -1,0 +1,130 @@
+diff --git a/ggml/src/ggml-cuda/fattn-tile.cuh b/ggml/src/ggml-cuda/fattn-tile.cuh
+index 7b0a5e5cf49..52fe0442be7 100644
+--- a/ggml/src/ggml-cuda/fattn-tile.cuh
++++ b/ggml/src/ggml-cuda/fattn-tile.cuh
+@@ -309,8 +309,20 @@ static constexpr __host__ __device__ uint32_t ggml_cuda_fattn_tile_get_config_am
+     return 0;
+ }
+ 
++// RDNA3.5-specific overrides. Falls through to the general RDNA table
++// for any shape not explicitly overridden here. Strix Halo (gfx1151) has
++// 1536 VGPR/SIMD; dropping nbatch_K to 64 for the DKQ=256/ncols=32 hot path
++// takes VGPR/wave 256 -> 192 (off the 256 cliff).
++static constexpr __host__ __device__ uint32_t ggml_cuda_fattn_tile_get_config_amd_rdna3_5(const int DKQ, const int DV, const int ncols) {
++    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256, 32, 256, 3,  64,  64)
++    return ggml_cuda_fattn_tile_get_config_amd_rdna(DKQ, DV, ncols);
++}
++
+ static __host__ uint32_t ggml_cuda_fattn_tile_get_config(const int DKQ, const int DV, const int ncols, const int cc) {
+     if (GGML_CUDA_CC_IS_AMD(cc)) {
++        if (GGML_CUDA_CC_IS_RDNA3_5(cc)) {
++            return ggml_cuda_fattn_tile_get_config_amd_rdna3_5(DKQ, DV, ncols);
++        }
+         if (GGML_CUDA_CC_IS_RDNA(cc)) {
+             return ggml_cuda_fattn_tile_get_config_amd_rdna(DKQ, DV, ncols);
+         }
+@@ -324,7 +336,9 @@ static __host__ uint32_t ggml_cuda_fattn_tile_get_config(const int DKQ, const in
+ 
+ static constexpr __device__ uint32_t ggml_cuda_fattn_tile_get_config(const int DKQ, const int DV, const int ncols) {
+ #ifdef GGML_USE_HIP
+-#ifdef RDNA
++#ifdef RDNA3_5
++    return ggml_cuda_fattn_tile_get_config_amd_rdna3_5(DKQ, DV, ncols);
++#elif defined(RDNA)
+     return ggml_cuda_fattn_tile_get_config_amd_rdna(DKQ, DV, ncols);
+ #else
+     return ggml_cuda_fattn_tile_get_config_amd(DKQ, DV, ncols);
+diff --git a/ggml/src/ggml-cuda/mmq.cuh b/ggml/src/ggml-cuda/mmq.cuh
+index edf546d8f1e..f3663a199d1 100644
+--- a/ggml/src/ggml-cuda/mmq.cuh
++++ b/ggml/src/ggml-cuda/mmq.cuh
+@@ -107,13 +107,21 @@ struct tile_x_sizes {
+ };
+ 
+ static int get_mmq_x_max_host(const int cc) {
+-    return (turing_mma_available(cc) || amd_wmma_available(cc)) ? 128 :
+-        GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_VOLTA ?
++    // RDNA3_5 (gfx1151): use 128 to give dense GEMM the largest tiles; MoE path is capped to 48 in mul_mat_q_case.
++    if (GGML_CUDA_CC_IS_RDNA3_5(cc)) {
++        return 128;
++    }
++    if (turing_mma_available(cc) || amd_wmma_available(cc)) {
++         return 128;
++    }
++    if (GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_VOLTA) {
+ #ifdef GGML_CUDA_FORCE_MMQ
+-            128                     : 64;
++            return 128;
+ #else
+-            MMQ_DP4A_MAX_BATCH_SIZE : 64;
++            return MMQ_DP4A_MAX_BATCH_SIZE;
+ #endif // GGML_CUDA_FORCE_MMQ
++    }
++    return 64;
+ }
+ 
+ static constexpr __device__ int get_mmq_x_max_device() {
+@@ -140,8 +148,16 @@ static constexpr __device__ int get_mmq_x_max_device() {
+ }
+ 
+ static int get_mmq_y_host(const int cc) {
+-    return GGML_CUDA_CC_IS_AMD(cc) ? (GGML_CUDA_CC_IS_RDNA1(cc) ? 64 : 128) :
+-        ((GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_VOLTA) ? 128 : 64);
++    if (GGML_CUDA_CC_IS_AMD(cc)) {
++        if (GGML_CUDA_CC_IS_RDNA1(cc) || GGML_CUDA_CC_IS_RDNA3_5(cc)) {
++            return 64;
++        }
++        return 128;
++    }
++    if (GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_VOLTA) {
++        return 128;
++    }
++    return 64;
+ }
+ 
+ static constexpr __device__ int get_iter_k([[maybe_unused]] const ggml_type type) {
+@@ -155,7 +171,7 @@ if (type == GGML_TYPE_NVFP4 || type == GGML_TYPE_MXFP4) {
+ 
+ static constexpr __device__ int get_mmq_y_device() {
+ #if defined(GGML_USE_HIP)
+-#if defined(RDNA1)
++#if defined(RDNA1) || defined(RDNA3_5)
+     return 64;
+ #else
+     return 128;
+@@ -296,6 +312,9 @@ static constexpr __device__ int mmq_get_granularity_device(const int /*mmq_x*/)
+ 
+ #if defined(GGML_USE_HIP)
+ static int mmq_get_nwarps_host(const int cc, const int warp_size) {
++    if (GGML_CUDA_CC_IS_RDNA3_5(cc)) {
++        return 4;
++    }
+     return amd_mfma_available(cc) ? 8 : 256/warp_size;
+ }
+ #else
+@@ -306,7 +325,11 @@ static int mmq_get_nwarps_host(const int /*cc*/, const int warp_size) {
+ 
+ static constexpr __device__ int mmq_get_nwarps_device() {
+ #if defined(AMD_MFMA_AVAILABLE) || defined(AMD_WMMA_AVAILABLE)
++#if defined(RDNA3_5)
++    return 4;
++#else
+     return 8;
++#endif // defined(RDNA3_5)
+ #else
+     return 256/ggml_cuda_get_physical_warp_size();
+ #endif // AMD_MFMA_AVAILABLE
+@@ -4060,7 +4083,12 @@ void mul_mat_q_case(ggml_backend_cuda_context & ctx, const mmq_args & args, cuda
+     const int warp_size = ggml_cuda_info().devices[id].warp_size;
+     const int nwarps    = mmq_get_nwarps_host(cc, warp_size);
+ 
+-    const int mmq_x_max = get_mmq_x_max_host(cc);
++    int mmq_x_max = get_mmq_x_max_host(cc);
++    // RDNA3_5: cap MoE path to 48 (preserves the original VGPR/performance balance for per-expert dispatch)
++    // but let dense path use the full 128 cap from get_mmq_x_max_host.
++    if (GGML_CUDA_CC_IS_RDNA3_5(cc) && args.expert_bounds != nullptr) {
++        mmq_x_max = 48;
++    }
+     const int mmq_y = get_mmq_y_host(cc);
+ 
+     int mmq_x_best  = 0;

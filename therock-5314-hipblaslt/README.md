@@ -58,6 +58,21 @@ On gfx1151 it's **layout-dependent**:
   (~3.7× slower), looks like it's missing a tuned TN kernel and falling back.
 
 So a blanket `TORCH_BLAS_PREFER_HIPBLASLT=1` is *not* a clean win for a training step —
-the weight-gradient GEMM regresses badly. Per-op backend selection (hipBLASLt for
-NT/NN, rocBLAS for TN) would be the ideal, or hipBLASLt needs a tuned TN path on gfx1151.
+the weight-gradient GEMM regresses badly. Per-op backend selection would be the ideal,
+or hipBLASLt needs a tuned kernel for the slow layout on gfx1151.
 Thanks to @woct0rdho for the steer toward the training layouts — that's what surfaced this.
+
+## Label correction (2026-06-08, per @woct0rdho)
+The section headers above use **PyTorch-op** names; the row-major→BLAS mapping is not 1:1.
+Verified against the hipBLASLt bench log (`HIPBLASLT_LOG_MASK=32`) — the actual hipBLASLt
+labels are:
+
+| training op | PyTorch | **hipBLASLt (logged)** | speed |
+|---|---|---|---|
+| forward `y=x·Wᵀ` | `a @ b.T` | **TN** | fast |
+| dgrad `dX=dY·W` | `a @ b` | **NN** | fast |
+| wgrad `dW=dYᵀ·x` | `aᵀ @ b` | **NT** | slow |
+
+So the regressing GEMM is **wgrad = hipBLASLt NT** (the "wgrad (TN)" table above is that op;
+its true hipBLASLt label is **NT**). This matches @woct0rdho's "TN and NN fast, NT/TT slow"
+exactly. Numbers unchanged — only the naming is corrected.
